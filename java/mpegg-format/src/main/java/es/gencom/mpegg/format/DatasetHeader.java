@@ -634,11 +634,6 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         return multiple_alignment_flag;
     }
 
-    public boolean isUnmappedIndexing() {
-        //todo correct this
-        return false;
-    }
-
     public long getNumberUAccessUnits() {
         return num_u_access_units;
     }
@@ -657,5 +652,9 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
             }
         }
         return Arrays.copyOf(result, copied_i);
+    }
+
+    public void setOrderedBlocks(boolean orderedBlocks){
+        ordered_blocks_flag = orderedBlocks;
     }
 }

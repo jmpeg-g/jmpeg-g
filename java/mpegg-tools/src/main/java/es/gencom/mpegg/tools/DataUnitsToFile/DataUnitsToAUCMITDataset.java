@@ -39,7 +39,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
             int auId,
             DataUnitAccessUnit dataUnit,
             DatasetContainer datasetContainer
-    ) throws IOException {
+    ) {
         AccessUnitHeader accessUnitHeader = new AccessUnitHeader(
                 datasetContainer.getDatasetHeader(),
                 auId,
@@ -81,7 +81,11 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
             );
         }
 
-        putInSequence(new IndexInfo(accessUnitContainer));
+        if(dataUnit.getAUType() != DATA_CLASS.CLASS_U) {
+            putInSequence(new IndexInfo(accessUnitContainer));
+        } else {
+            putInUnaligned(accessUnitContainer);
+        }
     }
 
 
@@ -118,6 +122,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
             long[][][] extended_au_start_position = new long[datasetHeader.getReferenceSequencesCount()][][];
             long[][][] extended_au_end_position = new long[datasetHeader.getReferenceSequencesCount()][][];
             long[][][] au_byte_offset = new long[datasetHeader.getReferenceSequencesCount()][][];
+            long[] u_au_byte_offset = new long[unmappedAccessUnitContainers.size()];
 
             for (short sequenceIndex = 0; sequenceIndex < datasetHeader.getSeqIds().length; sequenceIndex++) {
                 DatasetSequenceIndex datasetSequenceIndex = new DatasetSequenceIndex(sequenceIndex);
@@ -172,6 +177,13 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
                 }
             }
 
+            int u_au_id = 0;
+            for(AccessUnitContainer accessUnitContainer : unmappedAccessUnitContainers){
+                u_au_byte_offset[u_au_id] = prior_au_byte_offset;
+                prior_au_byte_offset += accessUnitContainer.sizeWithHeader();
+                u_au_id++;
+            }
+
             MasterIndexTable createdMaster = new MasterIndexTable(
                     datasetHeader,
                     au_start_position,
@@ -180,7 +192,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
                     extended_au_end_position,
                     au_byte_offset,
                     new Signature[0][],
-                    new long[0],
+                    u_au_byte_offset,
                     new long[0][]
             );
 
@@ -197,19 +209,13 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
     @Override
     public void addAsDataset(
             DatasetGroupContainer datasetGroupContainer,
+            int datasetId,
             DataUnits dataUnits,
             boolean use40BitsPositions,
             short referenceId,
             int default_threshold
     ) throws IOException {
         DatasetContainer datasetContainer = new DatasetContainer();
-
-        int maxId = -1;
-        for(int dataset_i =0; dataset_i < datasetGroupContainer.getDatasetGroupHeader().getNumDatasets(); dataset_i++){
-            maxId = Integer.max(maxId, datasetGroupContainer.getDatasetGroupHeader().getDatasetId(dataset_i));
-        }
-
-        int datasetId = maxId+1;
 
         boolean multiple_alignment_flag = inferMultiAlignment(dataUnits);
         boolean byte_offset_size_flag = use40BitsPositions;
@@ -224,7 +230,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
         long[] seq_blocks = countBlocksPerSequence(reference, dataUnits);
         SequenceIdentifier[] seqId = createSequenceIdentifiers(reference, seq_blocks);
         seq_blocks = discardZeros(seq_blocks);
-        DatasetType dataset_type = DatasetType.ALIGNED;
+        DatasetType dataset_type = inferDatasetType(dataUnits);
         DATA_CLASS[] dataClasses = getDataClasses(dataUnits);
         DESCRIPTOR_ID[][] descriptorIdentifiers = getDescriptorIdentifiers(dataUnits, dataClasses);
         Alphabet alphabet = Alphabet.DNA_IUPAC;

@@ -32,7 +32,7 @@ import es.gencom.mpegg.io.MPEGWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-class RawOrFasta_ExtRef_info extends Abstract_ExtRef_info{
+public class RawOrFasta_ExtRef_info extends Abstract_ExtRef_info{
     byte[][] checksums;
 
     RawOrFasta_ExtRef_info() {}
@@ -69,5 +69,9 @@ class RawOrFasta_ExtRef_info extends Abstract_ExtRef_info{
             size += checksums[seq_i].length;
         }
         return size;
+    }
+
+    public byte[] getChecksum(int sequence_index){
+        return checksums[sequence_index];
     }
 }

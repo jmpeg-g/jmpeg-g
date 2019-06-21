@@ -1,6 +1,5 @@
 package es.gencom.mpegg.tools;
 
-import es.gencom.mpegg.tools.DataUnitsToFile.DataUnitsExtractor;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.*;

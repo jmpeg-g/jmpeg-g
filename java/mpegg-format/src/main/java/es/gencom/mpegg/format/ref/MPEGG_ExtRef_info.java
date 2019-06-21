@@ -32,7 +32,7 @@ import es.gencom.mpegg.io.MPEGWriter;
 import java.io.IOException;
 import java.util.Arrays;
 
-class MPEGG_ExtRef_info extends Abstract_ExtRef_info {
+public class MPEGG_ExtRef_info extends Abstract_ExtRef_info {
     private byte dataset_group_id;
     private short dataset_id;
     private byte[] checksum;

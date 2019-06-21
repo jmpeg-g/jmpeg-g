@@ -3,7 +3,6 @@ package es.gencom.mpegg.tools;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.stream.Stream;
 
 public class SequenceNamesParser {
     public static String[] getSequenceNames(Path sequenceNamesPath) throws IOException {

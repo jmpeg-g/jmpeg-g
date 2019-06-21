@@ -9,6 +9,8 @@ import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.HalfMappedAcces
 import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.MappedAccessUnitEncoder;
 import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
+import static es.gencom.mpegg.coder.compression.DESCRIPTOR_ID.MSAR;
+import static es.gencom.mpegg.coder.compression.DESCRIPTOR_ID.RNAME;
 import es.gencom.mpegg.coder.compression.ENCODING_MODE_ID;
 import es.gencom.mpegg.coder.compression.QV_CODING_MODE;
 import es.gencom.mpegg.coder.configuration.DescriptorDecoderConfigurationFactory;
@@ -35,8 +37,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.zip.DataFormatException;
-
-import static es.gencom.mpegg.coder.compression.DESCRIPTOR_ID.*;
 
 public class BAMToMPEGGBytestream {
     private static long numDiscardedRecords = 0;

@@ -1,23 +1,20 @@
 package es.gencom.mpegg.tools.DataUnitsToFile;
 
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
-import es.gencom.mpegg.format.DATA_CLASS;
-import es.gencom.mpegg.format.DatasetGroupContainer;
-import es.gencom.mpegg.format.SequenceIdentifier;
+import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
+import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
-import es.gencom.mpegg.tools.DataUnitsIndexation;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.tools.DataUnitsIndexation;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.zip.DataFormatException;
 
 public abstract class AbstractDataUnitsToDataset {
     protected Map<SequenceIdentifier, TreeMap<DATA_CLASS, TreeSet<IndexInfo>>> indexationInfos;
+    protected List<AccessUnitContainer> unmappedAccessUnitContainers;
 
     protected static boolean inferMultiAlignment(DataUnits dataUnits){
         boolean initialized = false;
@@ -267,6 +264,7 @@ public abstract class AbstractDataUnitsToDataset {
 
     public abstract void addAsDataset(
             DatasetGroupContainer datasetGroupContainer,
+            int datasetId,
             DataUnits dataUnits,
             boolean use40BitsPositions,
             short referenceId,
@@ -275,5 +273,27 @@ public abstract class AbstractDataUnitsToDataset {
 
     AbstractDataUnitsToDataset(){
         indexationInfos = new TreeMap<>();
+        unmappedAccessUnitContainers = new ArrayList<>();
+    }
+
+    protected static DatasetType inferDatasetType(DataUnits dataUnits) {
+        DatasetType datasetType = null;
+        for(DataUnitParameters dataUnitParameters : dataUnits.getParameters()){
+            if(datasetType == null){
+                datasetType = dataUnitParameters.getDatasetType();
+            } else {
+                if(datasetType != dataUnitParameters.getDatasetType()){
+                    throw new IllegalArgumentException("Not all dataset parameters share the same type");
+                }
+            }
+        }
+        if(datasetType == null){
+            throw new IllegalArgumentException("Empty data unit parameters list");
+        }
+        return datasetType;
+    }
+
+    protected void putInUnaligned(AccessUnitContainer accessUnitContainer){
+        unmappedAccessUnitContainers.add(accessUnitContainer);
     }
 }

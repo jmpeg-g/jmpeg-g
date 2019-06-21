@@ -69,8 +69,17 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
         return datasetContainers;
     }
 
-    public DatasetContainer getDatasetContainer(final int index) {
+    public DatasetContainer getDatasetContainerByIndex(final int index) {
         return datasetContainers.get(index);
+    }
+
+    public DatasetContainer getDatasetContainerById(final int datasetId) {
+        for(DatasetContainer datasetContainer: datasetContainers){
+            if(datasetContainer.getDatasetHeader().getDatasetId() == datasetId){
+                return datasetContainer;
+            }
+        }
+        return null;
     }
 
     public void addDatasetContainer(DatasetContainer datasetContainer){

@@ -59,12 +59,16 @@ public class DataUnits {
     }
 
     public void write(final MPEGWriter writer) throws IOException {
+        write(writer, writer);
+    }
+
+    public void write(final MPEGWriter writer, final MPEGWriter writerRawRef) throws IOException {
         for(AbstractDataUnit dataUnitParameter : dataUnitParametersList){
             dataUnitParameter.write(writer);
         }
 
         if(dataUnitRawReference != null) {
-            dataUnitRawReference.write(writer);
+            dataUnitRawReference.write(writerRawRef);
         }
 
         for(AbstractDataUnit dataUnit : dataUnits) {
@@ -117,5 +121,9 @@ public class DataUnits {
 
     public Iterable<DataUnitParameters> getParameters() {
         return dataUnitParametersList;
+    }
+
+    public DataUnitRawReference getDataUnitRawReference() {
+        return dataUnitRawReference;
     }
 }

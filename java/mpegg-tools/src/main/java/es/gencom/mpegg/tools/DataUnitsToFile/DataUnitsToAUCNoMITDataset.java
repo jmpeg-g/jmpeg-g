@@ -18,6 +18,7 @@ import java.util.List;
 public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
     public void addAsDataset(
             DatasetGroupContainer datasetGroupContainer,
+            int datasetId,
             DataUnits dataUnits,
             boolean use40BitsPositions,
             short referenceId,
@@ -25,12 +26,6 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
     ){
         DatasetContainer datasetContainer = new DatasetContainer();
 
-        int maxId = -1;
-        for(int dataset_i =0; dataset_i < datasetGroupContainer.getDatasetGroupHeader().getNumDatasets(); dataset_i++){
-            maxId = Integer.max(maxId, datasetGroupContainer.getDatasetGroupHeader().getDatasetId(dataset_i));
-        }
-
-        int datasetId = maxId+1;
 
         boolean multiple_alignment_flag = inferMultiAlignment(dataUnits);
         boolean byte_offset_size_flag = use40BitsPositions;
@@ -45,7 +40,7 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
         long[] seq_blocks = countBlocksPerSequence(reference, dataUnits);
         SequenceIdentifier[] seqId = createSequenceIdentifiers(reference, seq_blocks);
         seq_blocks = discardZeros(seq_blocks);
-        DatasetType dataset_type = DatasetType.ALIGNED;
+        DatasetType dataset_type = inferDatasetType(dataUnits);
         DATA_CLASS[] dataClasses = getDataClasses(dataUnits);
         DESCRIPTOR_ID[][] descriptorIdentifiers = getDescriptorIdentifiers(dataUnits, dataClasses);
         Alphabet alphabet = Alphabet.DNA_IUPAC;
