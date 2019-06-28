@@ -42,13 +42,14 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
             DataUnits dataUnits,
             boolean use40BitsPositions,
             short referenceId,
-            int default_threshold
-    ) throws IOException, DataFormatException {
+            int default_threshold,
+            Alphabet alphabet) throws IOException, DataFormatException {
 
         DatasetContainer datasetContainer = new DatasetContainer();
 
+        DatasetType dataset_type = inferDatasetType(dataUnits);
         boolean multiple_alignment_flag = inferMultiAlignment(dataUnits);
-        boolean byte_offset_size_flag = use40BitsPositions;
+        boolean byte_offset_size_flag = dataset_type==DatasetType.REFERENCE || use40BitsPositions;
         boolean non_overlapping_au_range = inferNonOverlapping(dataUnits);
         boolean pos_40_bits = use40BitsPositions;
         boolean block_header_flag = false;
@@ -60,10 +61,8 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
         long[] seq_blocks = countBlocksPerSequence(reference, dataUnits);
         SequenceIdentifier[] seqId = createSequenceIdentifiers(reference, seq_blocks);
         seq_blocks = discardZeros(seq_blocks);
-        DatasetType dataset_type = inferDatasetType(dataUnits);
         DATA_CLASS[] dataClasses = getDataClasses(dataUnits);
         DESCRIPTOR_ID[][] descriptorIdentifiers = getDescriptorIdentifiers(dataUnits, dataClasses);
-        Alphabet alphabet = Alphabet.DNA_IUPAC;
         long num_u_access_units = countNonAligned(dataUnits);
         long num_u_clusters = 0;
         int multiple_signature_base = 0;

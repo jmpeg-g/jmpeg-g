@@ -3,14 +3,15 @@ package es.gencom.mpegg.tools;
 import es.gencom.integration.bam.BAMFileReader;
 import es.gencom.integration.bam.BAMHeader;
 import es.gencom.integration.bam.BAMRecord;
+import es.gencom.integration.fasta.FastaFileReader;
+import es.gencom.integration.fasta.FastaIterator;
+import es.gencom.integration.fasta.FastaSequence;
 import es.gencom.mpegg.Record;
 import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.AbstractAccessUnitEncoder;
 import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.HalfMappedAccessUnitEncoder;
 import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.MappedAccessUnitEncoder;
 import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
-import static es.gencom.mpegg.coder.compression.DESCRIPTOR_ID.MSAR;
-import static es.gencom.mpegg.coder.compression.DESCRIPTOR_ID.RNAME;
 import es.gencom.mpegg.coder.compression.ENCODING_MODE_ID;
 import es.gencom.mpegg.coder.compression.QV_CODING_MODE;
 import es.gencom.mpegg.coder.configuration.DescriptorDecoderConfigurationFactory;
@@ -31,12 +32,17 @@ import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
 import es.gencom.mpegg.coder.dataunits.DataUnitRawReference;
 import es.gencom.mpegg.coder.dataunits.DataUnits;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.zip.DataFormatException;
+
+import static es.gencom.mpegg.coder.compression.DESCRIPTOR_ID.*;
 
 public class BAMToMPEGGBytestream {
     private static long numDiscardedRecords = 0;
@@ -368,16 +374,35 @@ public class BAMToMPEGGBytestream {
 
     static void encode(
             String inputBamPath,
-            String rawReferencePath,
+            String fastaReferencePath,
             String outputBsPath,
-            String[] sequenceNames,
             boolean useIlluminaReadIdentifierEncoder
     ) throws IOException, DataFormatException {
+        String rawReferencePath = fastaReferencePath.replace("fa", "rawReference");
+        String sequenceNamesPath = fastaReferencePath.replace("fa", "sequenceNames");
+        String[] sequenceNames;
+        File rawReferenceFile = new File(rawReferencePath);
+        File sequenceNamesFile = new File(sequenceNamesPath);
+        if(rawReferenceFile.exists() && sequenceNamesFile.exists()) {
+            System.out.println("Raw reference already exists.");
+            sequenceNames = SequenceNamesParser.getSequenceNames(Paths.get(sequenceNamesPath));
+        } else {
+            System.out.println("Starting conversion to raw reference");
+            FastaFileToRawReferenceFile fastaFileToRawReferenceFile = new FastaFileToRawReferenceFile(fastaReferencePath);
+            rawReferencePath = fastaFileToRawReferenceFile.getRawReferencePath().toString();
+            sequenceNames = fastaFileToRawReferenceFile.getSequenceNames();
+            System.out.println("Finished conversion to raw reference");
+        }
+
+        System.out.println("Reading raw reference");
+        DataUnitRawReference dataUnitRawReference = DataUnitRawReference.read(
+
+                new ReadableMSBitFileChannel(new FileInputStream(Paths.get(rawReferencePath).toFile()).getChannel()),
+                null
+        );
+
         SequencesFromDataUnitsRawReference rawReference = new SequencesFromDataUnitsRawReference(
-                DataUnitRawReference.read(
-                        new ReadableMSBitFileChannel(FileChannel.open(Paths.get(rawReferencePath))),
-                        null
-                ),
+                dataUnitRawReference,
                 sequenceNames
         );
 

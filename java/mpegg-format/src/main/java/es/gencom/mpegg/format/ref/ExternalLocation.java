@@ -32,7 +32,7 @@ import es.gencom.mpegg.io.MPEGWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-public class ExternalLocation extends AbstractLocation {
+public class ExternalLocation implements AbstractLocation {
     private String ref_uri;
     private ChecksumAlgorithm checksum_alg;
     private REFERENCE_TYPE reference_type;
@@ -118,6 +118,11 @@ public class ExternalLocation extends AbstractLocation {
         return result;
     }
 
+    @Override
+    public REFERENCE_TYPE getReferenceType() {
+        return reference_type;
+    }
+
     public String getRef_uri() {
         return ref_uri;
     }
@@ -128,9 +133,5 @@ public class ExternalLocation extends AbstractLocation {
 
     public ChecksumAlgorithm getChecksum_alg() {
         return checksum_alg;
-    }
-
-    public REFERENCE_TYPE getReference_type() {
-        return reference_type;
     }
 }

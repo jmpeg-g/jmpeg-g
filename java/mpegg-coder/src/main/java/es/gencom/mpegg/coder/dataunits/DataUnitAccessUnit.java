@@ -338,7 +338,9 @@ public class DataUnitAccessUnit extends AbstractDataUnit {
                     sizeInBits += parameters.isPosSize40() ? 40:32; //extended_au_end_position
                 }
             }else{
-                throw new UnsupportedOperationException();
+                if(parameters.getMultiple_signature_base() != 0) {
+                    throw new UnsupportedOperationException();
+                }
             }
             return (long)Math.ceil((double)sizeInBits/8);
         }
@@ -368,7 +370,9 @@ public class DataUnitAccessUnit extends AbstractDataUnit {
                     writer.writeBits(extended_au_end_position, parameters.isPosSize40() ? 40:32);
                 }
             }else{
-                throw new UnsupportedOperationException();
+                if(parameters.getMultiple_signature_base() != 0) {
+                    throw new UnsupportedOperationException();
+                }
             }
             writer.align();
         }

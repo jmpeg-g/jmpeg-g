@@ -315,7 +315,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
                     result += pos_size; //ext start pos
                     result += pos_size; //ext end pos
                 }
-            } else if (u_cluster_signatures != null & u_cluster_signatures.length > 0) {
+            } else if (u_cluster_signatures != null && u_cluster_signatures.length > 0) {
                 final int multiple_signature_base = header.getMultipleSignatureBase();
                 if (multiple_signature_base != 0) {
                     final byte u_signature_size = header.getUnmappedSignatureSize();
@@ -368,7 +368,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
                     writer.writeBits(extended_au_start_position, posSize);
                     writer.writeBits(extended_au_end_position, posSize);
                 }
-            } else if (u_cluster_signatures != null & u_cluster_signatures.length > 0) {
+            } else if (u_cluster_signatures != null && u_cluster_signatures.length > 0) {
                 final int multiple_signature_base = header.getMultipleSignatureBase();
                 if (multiple_signature_base != 0) {
                     final byte u_signature_size = header.getUnmappedSignatureSize();
@@ -413,10 +413,9 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
 
 
         if (!header.isMIT()) {
-            sequence_id = new SequenceIdentifier((short) reader.readBits(16));
 
             if (au_type != DATA_CLASS.CLASS_U) {
-
+                sequence_id = new SequenceIdentifier((short) reader.readBits(16));
                 byte posSize = (byte)(header.isPos_40_bits() ? 40 : 32);
                 au_start_position = (int) reader.readBits(posSize);
                 au_end_position = (int) reader.readBits(posSize);

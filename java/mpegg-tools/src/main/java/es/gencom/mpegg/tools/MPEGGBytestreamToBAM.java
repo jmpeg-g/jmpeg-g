@@ -3,8 +3,8 @@ package es.gencom.mpegg.tools;
 import es.gencom.integration.bam.BAMFileOutputStream;
 import es.gencom.integration.bam.BAMHeader;
 import es.gencom.integration.bam.BAMRecord;
-import es.gencom.mpegg.decoder.exceptions.InvalidSymbolException;
-import es.gencom.mpegg.decoder.exceptions.MissingRequiredDescriptorException;
+import es.gencom.mpegg.decoder.Exceptions.InvalidSymbolException;
+import es.gencom.mpegg.decoder.Exceptions.MissingRequiredDescriptorException;
 import es.gencom.mpegg.decoder.SequencesFromDataUnitsRawReference;
 import es.gencom.mpegg.io.MPEGReader;
 import es.gencom.mpegg.io.ReadableMSBitFileChannel;
@@ -21,25 +21,15 @@ import java.util.zip.DataFormatException;
 
 public class MPEGGBytestreamToBAM {
     public static void decode(
-            String inputPathMPEGG,
-            String rawReferenceFileName,
+            DataUnits dataUnits,
             String outputPathBAM,
             String[] sequencesNames
     ) throws IOException, DataFormatException, InvalidSymbolException, MissingRequiredDescriptorException {
-
-        FileInputStream dataUnitsInputStream = new FileInputStream(new File(inputPathMPEGG));
-        MPEGReader mpegReader = new ReadableMSBitFileChannel(dataUnitsInputStream.getChannel());
-        DataUnits dataUnits = DataUnits.read(mpegReader);
-
-
         MPEGGdecodingTask mpegGdecodingTask = new MPEGGdecodingTask(
                 sequencesNames,
                 dataUnits,
                 new SequencesFromDataUnitsRawReference(
-                        DataUnitRawReference.read(
-                                new ReadableMSBitFileChannel(FileChannel.open(Paths.get(rawReferenceFileName))),
-                                dataUnits
-                        ),
+                        dataUnits.getDataUnitRawReference(),
                         sequencesNames
                 )
         );

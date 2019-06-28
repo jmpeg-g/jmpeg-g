@@ -30,18 +30,13 @@ package es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders;
  * @author
  */
 
-public enum Operation {
-    Match((byte)0),
-    SubstitutionToN((byte) 1),
-    Substitution((byte) 2),
-    Insert((byte) 3),
-    Delete((byte) 4),
-    SoftClip((byte)5),
-    HardClip((byte)6);
+public final class Operation {
 
-    public final byte id;
-
-    Operation(final byte id) {
-        this.id = id;
-    }
+    public final static byte Match = 0;
+    public final static byte SubstitutionToN = 1;
+    public final static byte Substitution = 2;
+    public final static byte Insert = 3;
+    public final static byte Delete = 4;
+    public final static byte SoftClip = 5;
+    public final static byte HardClip = 6;
 }

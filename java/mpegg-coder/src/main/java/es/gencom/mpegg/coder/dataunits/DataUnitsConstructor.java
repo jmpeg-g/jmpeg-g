@@ -83,9 +83,9 @@ public class DataUnitsConstructor {
             throw new IllegalArgumentException();
         } else {
             ExternalLocation externalLocation = (ExternalLocation)reference.getLocation();
-            if(externalLocation.getReference_type() == REFERENCE_TYPE.MPEGG_REF){
+            if(externalLocation.getReferenceType() == REFERENCE_TYPE.MPEGG_REF){
                 throw new IllegalArgumentException();
-            } else if (externalLocation.getReference_type() == REFERENCE_TYPE.RAW_REF){
+            } else if (externalLocation.getReferenceType() == REFERENCE_TYPE.RAW_REF){
 
                 MPEGReader readerOriginal = new ReadableMSBitFileChannel(
                         FileChannel.open(Paths.get(externalLocation.getRef_uri()))

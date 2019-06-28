@@ -25,12 +25,12 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -65,9 +65,9 @@ public class RlenStream {
             return;
         }
 
-        CABAC_DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
-                DESCRIPTOR_ID.RLEN, dataClass
-        );
+        DescriptorDecoderConfiguration conf = 
+                encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.RLEN, dataClass);
+
         sub_streams = block.getPayloads();
 
         decoders = new DescriptorDecoder[sub_streams.length];

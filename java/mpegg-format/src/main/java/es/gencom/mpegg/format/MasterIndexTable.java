@@ -323,6 +323,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
 
             if(num_u_access_units != 0) {
                 u_au_byte_offset = new long[num_u_access_units];
+                DataClassIndex dataClassIndex = dataset_header.getClassIndex(DATA_CLASS.CLASS_U);
                 if(!dataset_header.isBlockHeader()) {
                     u_block_byte_offset = new long[num_u_access_units][dataset_header.getNumberOfDescriptors(DATA_CLASS.CLASS_U)];
                 }
@@ -370,6 +371,9 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                                 descriptor_i++
                         ) {
                             u_block_byte_offset[uau_id][descriptor_i] = reader.readBits(byte_offset_size);
+                            blockStartsPerClassPerDescriptor.get(dataClassIndex.getIndex()).get(descriptor_i).add(
+                                    u_block_byte_offset[uau_id][descriptor_i]
+                            );
                         }
                     }
                 }
@@ -535,6 +539,29 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
         return descriptorPositions.higher(currentBlockStart);
     }
 
+    public Long getUnmappedNextBlockStart(
+            final int auId,
+            final DescriptorIndex descriptorIndex) {
+
+        final long currentBlockStart = getUnmappedBlockByteOffset(auId, descriptorIndex);
+        DataClassIndex index;
+        try {
+            index = dataset_header.getClassIndex(DATA_CLASS.CLASS_U);
+        } catch (DataClassNotFoundException e){
+            throw new IllegalArgumentException(e);
+        }
+
+        TreeSet<Long> descriptorPositions = blockStartsPerClassPerDescriptor
+                .get(index.getIndex())
+                .get(descriptorIndex.getDescriptor_index());
+
+        if(!descriptorPositions.contains(currentBlockStart)){
+            throw new InternalError();
+        }
+
+        return descriptorPositions.higher(currentBlockStart);
+    }
+
     public long getAuStart(
             final DatasetSequenceIndex seq,
             final DataClassIndex classIndex,
@@ -620,5 +647,9 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
             }
         }
         return true;
+    }
+
+    public long getUnmappedBlockByteOffset(int unmappedBlock_i, DescriptorIndex descriptorIndex) {
+        return u_block_byte_offset[unmappedBlock_i][descriptorIndex.getDescriptor_index()];
     }
 }

@@ -6,8 +6,8 @@ import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.format.SequenceIdentifier;
 import es.gencom.mpegg.decoder.AbstractSequencesSource;
 import es.gencom.mpegg.decoder.DataUnitAccessUnitDecoder;
-import es.gencom.mpegg.decoder.exceptions.InvalidSymbolException;
-import es.gencom.mpegg.decoder.exceptions.MissingRequiredDescriptorException;
+import es.gencom.mpegg.decoder.Exceptions.InvalidSymbolException;
+import es.gencom.mpegg.decoder.Exceptions.MissingRequiredDescriptorException;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.dataunits.DataUnits;
 

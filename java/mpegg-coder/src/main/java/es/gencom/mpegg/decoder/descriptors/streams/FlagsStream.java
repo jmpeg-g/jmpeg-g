@@ -25,12 +25,12 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -48,13 +48,13 @@ public class FlagsStream {
             final DATA_CLASS dataClass, 
             final EncodingParameters encodingParameters) {
 
-        CABAC_DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
+        DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
                 DESCRIPTOR_ID.FLAGS,
                 dataClass);
 
         if(block == null) {
             readers = null;
-        }else {
+        } else {
             readers = block.getPayloads();
             decoders = new DescriptorDecoder[readers.length];
             for(int subsequence_index = 0; subsequence_index<readers.length; subsequence_index++){

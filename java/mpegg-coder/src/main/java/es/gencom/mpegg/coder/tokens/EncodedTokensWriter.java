@@ -25,8 +25,9 @@
 
 package es.gencom.mpegg.coder.tokens;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_TokentypeDecoderConfiguration;
+import es.gencom.mpegg.coder.compression.COMPRESSION_METHOD_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
+import es.gencom.mpegg.coder.compression.TokentypeDecoderConfiguration;
 import es.gencom.mpegg.io.MPEGWriter;
 import es.gencom.mpegg.io.MSBitOutputArray;
 
@@ -38,7 +39,7 @@ public class EncodedTokensWriter {
             MPEGWriter writer,
             AbstractReadIdentifierEncoder readIdentifierEncoder,
             DESCRIPTOR_ID descriptor_id,
-            CABAC_TokentypeDecoderConfiguration tokentypeDecoderConfiguration) throws IOException {
+            TokentypeDecoderConfiguration tokentypeDecoderConfiguration) throws IOException {
 
         short[][][] values = readIdentifierEncoder.resizeAndGetValues();
 
@@ -86,8 +87,7 @@ public class EncodedTokensWriter {
 
                 MSBitOutputArray writerRLE = new MSBitOutputArray();
                 SubTokenRLEEncoder rleEncoder = new SubTokenRLEEncoder(
-                        writerRLE,
-                        tokentypeDecoderConfiguration.rle_guard_tokentype);
+                        tokentypeDecoderConfiguration.getTokentypeEncoder(writerRLE, descriptor_id, COMPRESSION_METHOD_ID.RLE));
 
                 MSBitOutputArray writerCABAC0 = new MSBitOutputArray();
                 SubTokenCABACMethod0Encoder cabac0Encoder = new SubTokenCABACMethod0Encoder(
@@ -127,9 +127,7 @@ public class EncodedTokensWriter {
                 } else if (rleSize == minimalLength){
                     writer.writeBits(2, 4);
                     bestEncoder = new SubTokenRLEEncoder(
-                            writer,
-                            tokentypeDecoderConfiguration.rle_guard_tokentype
-                    );
+                        tokentypeDecoderConfiguration.getTokentypeEncoder(writer, descriptor_id, COMPRESSION_METHOD_ID.RLE));
                 } else if (cabac0Size == minimalLength){
                     writer.writeBits(3, 4);
                     bestEncoder = new SubTokenCABACMethod0Encoder(

@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 
 public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder {
     final static Pattern PATTERN = Pattern.compile("([a-zA-Z0-9_]*)([:,.;/]{0,1})");
+    final static byte[] DELIMITERS = new byte[]{':',',','.',';','/','#','_'};
 
     public GeneralReadIdentifierEncoder(){
         this(false);
@@ -42,23 +43,36 @@ public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder 
 
     @Override
     protected void encodeSpecific(String readIdentifier) {
-        String[] groups = breakDownIdentifier(readIdentifier);
+        byte[] readIdentifierBytes = readIdentifier.getBytes();
+        int[] marks = breakDownIdentifier(readIdentifierBytes);
 
         Token[] tokens = new Token[32];
         int numTokens = 0;
-        for(String group : groups){
-            try{
-                int value = Integer.parseInt(group);
-                if(group.startsWith("0")){
-                    tokens[numTokens] = Token.createDigitsTokenPadded(value, (short)group.length());
-                }else {
-                    tokens[numTokens] = Token.createDigitsToken(Integer.parseInt(group));
-                }
-            }catch (NumberFormatException e){
-                if(group.length() == 1){
-                    tokens[numTokens] = Token.createCharToken(group.charAt(0));
+
+        for(int i=0; i < marks.length; i++){
+            int start = marks[i];
+            int end;
+            if(i == marks.length-1){
+                end = readIdentifierBytes.length;
+            } else {
+                end = marks[i+1];
+            }
+            if(isDelimiter(readIdentifierBytes[start])){
+                tokens[numTokens] = Token.createCharToken((char) readIdentifierBytes[start]);
+            } else {
+                if(isDigit(readIdentifierBytes[start])){
+                    long value = 0;
+                    boolean isPadded = readIdentifierBytes[start] == '0';
+                    for(int pos = start; pos < end; pos++){
+                        value = value*10 + readIdentifierBytes[pos]-'0';
+                    }
+                    if(isPadded) {
+                        tokens[numTokens] = Token.createDigitsTokenPadded(value, (short) (end-start));
+                    }else{
+                        tokens[numTokens] = Token.createDigitsToken(value);
+                    }
                 }else{
-                    tokens[numTokens] = Token.createStringToken(group);
+                    tokens[numTokens] = Token.createStringToken(Arrays.copyOfRange(readIdentifierBytes, start, end));
                 }
             }
             numTokens++;
@@ -72,28 +86,68 @@ public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder 
         encode(tokensList);
     }
 
-    static String[] breakDownIdentifier(String input){
-        Matcher matcher = PATTERN.matcher(input);
-        int results = 0;
-        String[] output = new String[32];
-        while(matcher.find()){
-            String group1 = matcher.group(1);
-            String group2 = matcher.group(2);
-            if(matcher.group(1).length() != 0) {
-                output[results] = group1;
-                results++;
-                if(output.length == results){
-                    output = Arrays.copyOf(output, output.length*2);
-                }
-            }
-            if(matcher.group(2).length() != 0) {
-                output[results] = group2;
-                results++;
-                if(output.length == results){
-                    output = Arrays.copyOf(output, output.length*2);
-                }
+    static boolean isDelimiter(byte value){
+        boolean isDelimiter = false;
+        for(int delimiter_i=0; delimiter_i < DELIMITERS.length; delimiter_i++){
+            if(value == DELIMITERS[delimiter_i]){
+                isDelimiter = true;
+                break;
             }
         }
-        return Arrays.copyOf(output, results);
+        return isDelimiter;
+    }
+
+    static boolean isDigit(byte value){
+        return value >= '0' && value <= '9';
+    }
+
+    static int[] breakDownIdentifier(byte[] bytesInput){
+        boolean isNumber = false;
+        boolean multiPositionToken = false;
+
+        int[] marks = new int[32];
+        int numMarks = 0;
+
+        for(int i=0; i<bytesInput.length; i++){
+            if(isDelimiter(bytesInput[i])){
+                multiPositionToken = false;
+                marks[numMarks] = i;
+                numMarks++;
+            } else {
+                if(
+                    bytesInput[i] >= '0'
+                    && bytesInput[i] <= '9'
+                ){
+                    if(!multiPositionToken){
+                        marks[numMarks] = i;
+                        numMarks++;
+                        isNumber = true;
+                        multiPositionToken = true;
+                    } else if(!isNumber){
+                        marks[numMarks] = i;
+                        numMarks++;
+                        isNumber = true;
+                        multiPositionToken = true;
+                    }
+                } else {
+                    if(!multiPositionToken){
+                        marks[numMarks] = i;
+                        numMarks++;
+                        isNumber = false;
+                        multiPositionToken = true;
+                    }else if(isNumber){
+                        marks[numMarks] = i;
+                        numMarks++;
+                        isNumber = false;
+                        multiPositionToken = true;
+                    }
+                }
+            }
+
+            if(marks.length == numMarks){
+                marks = Arrays.copyOf(marks, marks.length*2);
+            }
+        }
+        return Arrays.copyOf(marks, numMarks);
     }
 }

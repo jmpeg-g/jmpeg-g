@@ -25,54 +25,24 @@
 
 package es.gencom.mpegg.coder.tokens;
 
-import es.gencom.mpegg.io.MPEGReader;
-
-import java.io.EOFException;
+import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import java.io.IOException;
 
 public class SubTokenRLEDecoder implements SubTokenSequenceDecoder{
-    private final short guard;
-    private final MPEGReader reader;
-    private final long numOutputSymbols;
-
-    private long readSymbols = 0;
-    private short currentValue;
-    private long remainingValues = 0;
-
-    public SubTokenRLEDecoder(short guard, MPEGReader reader, long numOutputSymbols) {
-        this.guard = guard;
-        this.reader = reader;
-        this.numOutputSymbols = numOutputSymbols;
+    
+    final DescriptorDecoder decoder;
+            
+    public SubTokenRLEDecoder(final DescriptorDecoder decoder) {
+        this.decoder = decoder;
     }
 
     private long getValue() throws IOException {
-        if(readSymbols >= numOutputSymbols){
-            throw new EOFException();
-        }
-
-        if(remainingValues == 0){
-            currentValue = reader.readUnsignedByte();
-            remainingValues = 1;
-
-            if(currentValue == guard){
-                remainingValues = reader.readVarSizedUnsignedInt();
-                if(remainingValues == 0){
-                    remainingValues = 1;
-                    currentValue = guard;
-                }else{
-                    currentValue = reader.readUnsignedByte();
-                }
-            }
-        }
-        remainingValues--;
-        readSymbols++;
-        return currentValue;
-
+        return decoder.read();
     }
 
     @Override
-    public boolean hasNext() {
-        return readSymbols < numOutputSymbols;
+    public boolean hasNext() throws IOException {
+        return decoder.hasNext();
     }
 
     @Override

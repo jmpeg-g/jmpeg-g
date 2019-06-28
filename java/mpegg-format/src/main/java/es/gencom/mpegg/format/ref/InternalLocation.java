@@ -30,7 +30,7 @@ import es.gencom.mpegg.io.MPEGWriter;
 
 import java.io.IOException;
 
-public class InternalLocation extends AbstractLocation {
+public class InternalLocation implements AbstractLocation {
     private byte dataset_group_id;
     private short dataset_id;
 
@@ -60,6 +60,11 @@ public class InternalLocation extends AbstractLocation {
         return 1+1+2;//1:external flag, 1: dataset group Id + 2 datasetId
     }
 
+    @Override
+    public REFERENCE_TYPE getReferenceType() {
+        return REFERENCE_TYPE.MPEGG_REF;
+    }
+
     public byte getDatasetGroupId() {
         return dataset_group_id;
     }
@@ -75,4 +80,6 @@ public class InternalLocation extends AbstractLocation {
     public void setDatasetId(final short dataset_id) {
         this.dataset_id = dataset_id;
     }
+
+
 }

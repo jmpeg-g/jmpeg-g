@@ -19,10 +19,13 @@ public abstract class AbstractDataUnitsToDataset {
     protected static boolean inferMultiAlignment(DataUnits dataUnits){
         boolean initialized = false;
         boolean value = true;
+        boolean allU = true;
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
 
             if(dataUnitAccessUnit.getAUType() == DATA_CLASS.CLASS_U){
                 continue;
+            } else {
+                allU = false;
             }
 
             if(!initialized){
@@ -35,6 +38,10 @@ public abstract class AbstractDataUnitsToDataset {
             }
         }
 
+        if(allU){
+            return false;
+        }
+
         return value;
     }
 
@@ -43,6 +50,7 @@ public abstract class AbstractDataUnitsToDataset {
                 dataUnits
         );
         boolean overlapping = false;
+        boolean allClassU = true;
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
             DataUnitAccessUnit[] resultIntersect = dataUnitsIndexation.getDataUnits(
                     dataUnitAccessUnit.getSequenceId(),
@@ -52,6 +60,8 @@ public abstract class AbstractDataUnitsToDataset {
 
             if(dataUnitAccessUnit.getAUType() == DATA_CLASS.CLASS_U){
                 continue;
+            } else {
+                allClassU = false;
             }
 
             if(resultIntersect.length == 0){
@@ -62,6 +72,9 @@ public abstract class AbstractDataUnitsToDataset {
                     break;
                 }
             }
+        }
+        if(allClassU){
+            return true;
         }
         return overlapping;
     }
@@ -201,10 +214,18 @@ public abstract class AbstractDataUnitsToDataset {
     }
 
     protected static DESCRIPTOR_ID[][] getDescriptorIdentifiers(DataUnits dataUnits, DATA_CLASS[] dataClasses) {
-        boolean[][] hasDescriptor = new boolean[5][18];
+        boolean[][] hasDescriptor = new boolean[dataClasses.length][18];
+        byte[] dataClassIndex = new byte[6];
+
+        byte index = 0;
+        for(DATA_CLASS data_class : dataClasses){
+            dataClassIndex[data_class.ID - 1] = index;
+            index++;
+        }
+
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
             for(DataUnitAccessUnit.Block block : dataUnitAccessUnit.getBlocks()){
-                hasDescriptor[dataUnitAccessUnit.getAUType().ID-1][block.getDescriptorId()] = true;
+                hasDescriptor[dataClassIndex[dataUnitAccessUnit.getAUType().ID-1]][block.getDescriptorId()] = true;
             }
         }
 
@@ -212,16 +233,17 @@ public abstract class AbstractDataUnitsToDataset {
         for(DATA_CLASS dataClass : dataClasses){
             int numberDescriptors = 0;
             for(int descriptor_i = 0; descriptor_i < 18; descriptor_i++){
-                if(hasDescriptor[dataClass.ID - 1][descriptor_i]){
+                if(hasDescriptor[dataClassIndex[dataClass.ID-1]][descriptor_i]){
                     numberDescriptors++;
                 }
             }
 
-            result[dataClass.ID - 1] = new DESCRIPTOR_ID[numberDescriptors];
+            result[dataClassIndex[dataClass.ID-1]] = new DESCRIPTOR_ID[numberDescriptors];
             int descriptorsWritten = 0;
             for(int descriptor_i = 0; descriptor_i < 18; descriptor_i++){
-                if(hasDescriptor[dataClass.ID - 1][descriptor_i]){
-                    result[dataClass.ID - 1][descriptorsWritten] = DESCRIPTOR_ID.getDescriptorId((byte) descriptor_i);
+                if(hasDescriptor[dataClassIndex[dataClass.ID-1]][descriptor_i]){
+                    result[dataClassIndex[dataClass.ID-1]][descriptorsWritten] =
+                            DESCRIPTOR_ID.getDescriptorId((byte) descriptor_i);
                     descriptorsWritten++;
                 }
             }
@@ -268,8 +290,8 @@ public abstract class AbstractDataUnitsToDataset {
             DataUnits dataUnits,
             boolean use40BitsPositions,
             short referenceId,
-            int default_threshold
-    ) throws IOException, DataFormatException;
+            int default_threshold,
+            Alphabet alphabet) throws IOException, DataFormatException;
 
     AbstractDataUnitsToDataset(){
         indexationInfos = new TreeMap<>();

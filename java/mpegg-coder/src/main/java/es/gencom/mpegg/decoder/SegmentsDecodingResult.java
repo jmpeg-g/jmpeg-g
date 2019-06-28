@@ -25,29 +25,27 @@
 
 package es.gencom.mpegg.decoder;
 
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation;
-
 public class SegmentsDecodingResult {
     private final byte[][] decode_sequences;
-    private final Operation[][][][] operations;
+    private final byte[][][][] operations;
     private final int[][][][] operationLength;
     private final byte[][][][] original_nucleotides;
 
     public SegmentsDecodingResult(
             byte[][][] decode_sequences_perSplice,
-            Operation[][][][] operations,
+            byte[][][][] operations,
             int[][][][] operationLength,
             byte[][][][] original_nucleotides) {
 
         decode_sequences = new byte[decode_sequences_perSplice.length][];
-        for(int segment_i=0; segment_i < decode_sequences_perSplice.length; segment_i++){
+        for(int segment_i = 0; segment_i < decode_sequences_perSplice.length; segment_i++) {
             int totalLength = 0;
-            for(int splice_i=0; splice_i < decode_sequences_perSplice[segment_i].length; splice_i++){
+            for(int splice_i = 0; splice_i < decode_sequences_perSplice[segment_i].length; splice_i++) {
                 totalLength += decode_sequences_perSplice[segment_i][splice_i].length;
             }
             decode_sequences[segment_i] = new byte[totalLength];
             int currentLength = 0;
-            for(int splice_i=0; splice_i < decode_sequences_perSplice[segment_i].length; splice_i++){
+            for(int splice_i=0; splice_i < decode_sequences_perSplice[segment_i].length; splice_i++) {
                 System.arraycopy(
                         decode_sequences_perSplice[segment_i][splice_i],
                         0,
@@ -67,7 +65,7 @@ public class SegmentsDecodingResult {
         return decode_sequences;
     }
 
-    public Operation[][][][] getOperations() {
+    public byte[][][][] getOperations() {
         return operations;
     }
 

@@ -25,7 +25,6 @@
 
 package es.gencom.mpegg.coder.tokens;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_TokentypeDecoderConfiguration;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.COMPRESSION_METHOD_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
@@ -48,15 +47,8 @@ public class TokenValuesDecoder {
         short[][][] result = new short[16][16][];
         int typeNum = -1;
 
-        TokentypeDecoderConfiguration decoderConfiguration = encodingParameters.getDecoderConfiguration(
-                descriptor_id,
-                dataClass);
-
-        if(! (decoderConfiguration instanceof CABAC_TokentypeDecoderConfiguration)){
-            throw new IllegalArgumentException();
-        }
-        CABAC_TokentypeDecoderConfiguration cabacTokentypeDecoderConfiguration =
-                (CABAC_TokentypeDecoderConfiguration)decoderConfiguration;
+        TokentypeDecoderConfiguration decoderConfiguration = 
+                encodingParameters.getDecoderConfiguration(descriptor_id, dataClass);
 
         for(int tokentype_sequence_i = 0;
                 tokentype_sequence_i < num_tokentype_sequences;
@@ -87,16 +79,14 @@ public class TokenValuesDecoder {
                         break;
                     case RLE:
                         subTokenSequenceDecoder = new SubTokenRLEDecoder(
-                                cabacTokentypeDecoderConfiguration.rle_guard_tokentype,
-                                reader,
-                                numOutputSymbols
-                        );
+                                decoderConfiguration.getTokentypeDecoder(
+                                        reader, descriptor_id, compression_method_id, numOutputSymbols));
                         break;
                     case CABAC_ORDER_0:
                         subTokenSequenceDecoder = new SubTokenCABACMethod0Decoder(
                                 reader,
                                 descriptor_id,
-                                cabacTokentypeDecoderConfiguration,
+                                decoderConfiguration,
                                 numOutputSymbols
                         );
                         break;
@@ -104,7 +94,7 @@ public class TokenValuesDecoder {
                         subTokenSequenceDecoder = new SubTokenCABACMethod1Decoder(
                                 reader,
                                 descriptor_id,
-                                cabacTokentypeDecoderConfiguration,
+                                decoderConfiguration,
                                 numOutputSymbols
                         );
                         break;

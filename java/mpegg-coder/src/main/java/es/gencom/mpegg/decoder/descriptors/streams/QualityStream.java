@@ -109,7 +109,7 @@ public class QualityStream {
     }
 
     public short[] getQualitiesAligned(
-            Operation[][] operations,
+            byte[][] operations,
             int[][] operationLength,
             long[] segmentStart,
             long auStart
@@ -123,7 +123,7 @@ public class QualityStream {
 
         if(hasValue){
             return decode_qvs(qualityValueParameterSet, dataClass, operations, operationLength, segmentStart, auStart);
-        }else{
+        } else {
             return new short[0];
         }
     }
@@ -155,21 +155,18 @@ public class QualityStream {
     private short[] decode_qvs(
             AbstractQualityValueParameterSet qualityValueParameterSet,
             DATA_CLASS dataClass,
-            Operation[][] operations,
+            byte[][] operations,
             int[][] operationLength,
             long[] segmentStart,
-            long auStart
-    ) throws IOException {
+            long auStart) throws IOException {
 
         int length = 0;
-        for(int splice_i=0; splice_i < operations.length; splice_i++) {
+        for(int splice_i = 0; splice_i < operations.length; splice_i++) {
             for (int operation_i = 0; operation_i < operations[splice_i].length; operation_i++) {
-                if (
-                        operations[splice_i][operation_i] != Operation.Delete
-                                && operations[splice_i][operation_i] != Operation.HardClip
-                ) {
+                if (operations[splice_i][operation_i] != Operation.Delete && 
+                    operations[splice_i][operation_i] != Operation.HardClip) {
+                    
                     length += operationLength[splice_i][operation_i];
-
                 }
             }
         }
@@ -181,7 +178,7 @@ public class QualityStream {
             int positionInSplice = 0;
             int offset = Math.toIntExact(segmentStart[splice_i] - auStart);
             for (int operation_i = 0; operation_i < operations[splice_i].length; operation_i++) {
-                Operation operation = operations[splice_i][operation_i];
+                final byte operation = operations[splice_i][operation_i];
                 for (
                         int inOperationPos = 0;
                         inOperationPos < operationLength[splice_i][operation_i];
@@ -194,8 +191,7 @@ public class QualityStream {
                             qvCodeBookIds,
                             dataClass,
                             operation != Operation.Insert && operation != Operation.SoftClip,
-                            positionInSplice + offset
-                    );
+                            positionInSplice + offset);
 
                     int qvCodeBookSubSeq = codebookId + 2;
                     short entryIndex = (short) decoders[qvCodeBookSubSeq].read();

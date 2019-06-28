@@ -21,7 +21,7 @@ public class ReferenceChecksumChecker {
 
         ChecksumAlgorithm checksumAlgorithm = externalLocation.getChecksum_alg();
 
-        if(externalLocation.getReference_type() == REFERENCE_TYPE.MPEGG_REF){
+        if(externalLocation.getReferenceType() == REFERENCE_TYPE.MPEGG_REF){
             throw new UnsupportedOperationException();
         }
         if(externalLocation.getExtRef_info() instanceof MPEGG_ExtRef_info){

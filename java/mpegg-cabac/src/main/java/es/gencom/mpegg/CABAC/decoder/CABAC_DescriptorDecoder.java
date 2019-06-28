@@ -110,7 +110,7 @@ public class CABAC_DescriptorDecoder extends DescriptorDecoder {
                 decoder = new CABAC_NoTransformDecoder(reader, configuration, binarization, true, ref_source);
             }
         }
-
+        
         return count < num_output_symbols;
     }
     

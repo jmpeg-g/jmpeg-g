@@ -269,19 +269,19 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             AbstractSequencesSource sequencesSource,
             byte[] changedNucleotides,
             long[] changedPositions,
-            ALPHABET_ID alphabet_id
-    ) throws IOException {
+            ALPHABET_ID alphabet_id) throws IOException {
+
         int numberOfAlignedRecordSegments = mmType.length;
-        Operation[][][][] operations = new Operation[numberOfAlignedRecordSegments][1][][];
+        byte[][][][] operations = new byte[numberOfAlignedRecordSegments][1][][];
         int[][][][] operationLength = new int[numberOfAlignedRecordSegments][1][][];
         byte[][][] decode_sequences = new byte[numberOfAlignedRecordSegments][][];
         byte[][][][] original_nucleotides = new byte[numberOfAlignedRecordSegments][1][][];
         int[][][] length_original_nucleotides = new int[numberOfAlignedRecordSegments][1][];
-        for(
-                short alignedRecordSegment_i = 0;
-                alignedRecordSegment_i < numberOfAlignedRecordSegments;
-                alignedRecordSegment_i++
-        ){
+        
+        for(short alignedRecordSegment_i = 0;
+                  alignedRecordSegment_i < numberOfAlignedRecordSegments;
+                  alignedRecordSegment_i++) {
+
             decode_sequences[alignedRecordSegment_i] = decode_aligned_segment(
                 splicedSegLength[alignedRecordSegment_i],
                 mmType[alignedRecordSegment_i],
@@ -297,8 +297,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                 operations[alignedRecordSegment_i],
                 operationLength[alignedRecordSegment_i],
                 original_nucleotides[alignedRecordSegment_i],
-                length_original_nucleotides[alignedRecordSegment_i]
-            );
+                length_original_nucleotides[alignedRecordSegment_i]);
         }
         return new SegmentsDecodingResult(decode_sequences, operations, operationLength, original_nucleotides);
     }
@@ -315,14 +314,14 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             byte[] changedNucleotides,
             long[] changedPositions,
             ALPHABET_ID alphabet_id,
-            Operation[][][] operations,
+            byte[][][] operations,
             int[][][] operationLength,
             byte[][][] original_nucleotides,
-            int[][] length_original_nucleotides
-    ) throws IOException {
+            int[][] length_original_nucleotides) throws IOException {
+
         int numberOfSplices = splicedSegLength.length;
 
-        operations[0] = new Operation[numberOfSplices][];
+        operations[0] = new byte[numberOfSplices][];
         operationLength[0] = new int[numberOfSplices][];
         byte[][] decode_sequences = new byte[numberOfSplices][];
         original_nucleotides[0] = new byte[numberOfSplices][32];
@@ -337,7 +336,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             long position = mappingPos[0][splice_i];
             long mappedLength = splicedSegLength[splice_i];
 
-            operations[0][splice_i] = new Operation[128];
+            operations[0][splice_i] = new byte[128];
             operationLength[0][splice_i] = new int[128];
             int numberOperations = 0;
             decode_sequences[splice_i] = new byte[Math.toIntExact(mappedLength)];
@@ -392,8 +391,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                             splice_i,
                             Operation.Match,
                             numberOperations,
-                            delta
-                    );
+                            delta);
                 }
 
                 if(mmType[splice_i][operation_i] == 0){
@@ -531,13 +529,13 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
     }
 
     private static int prependOperation(
-            Operation[][][] operations,
-            int[][][] operationLength,
-            int splice_i,
-            Operation operation,
-            int numberOperations,
-            int length
-    ) {
+            final byte[][][] operations,
+            final int[][][] operationLength,
+            final int splice_i,
+            final byte operation,
+            final int numberOperations,
+            final int length) {
+
         System.arraycopy(
                 operations[0][splice_i],
                 0,
@@ -558,7 +556,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
     }
 
     private static int resizeOperationsArrays(
-            Operation[][][] operations,
+            byte[][][] operations,
             int[][][] operationLength,
             int splice_i,
             int numberOperations
@@ -574,19 +572,17 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
     }
 
     private static int addOperationAutomatic(
-            Operation[][][] operations,
-            int[][][] operationLength,
-            int splice_i,
-            Operation operation,
-            int numberOperations,
-            int length
-    ) {
+            final byte[][][] operations,
+            final int[][][] operationLength,
+            final int splice_i,
+            final byte operation,
+            final int numberOperations,
+            final int length) {
+
         operations[0][splice_i][numberOperations] = operation;
         operationLength[0][splice_i][numberOperations] = length;
         return resizeOperationsArrays(operations, operationLength, splice_i, numberOperations);
     }
-
-
 
     /**
      *

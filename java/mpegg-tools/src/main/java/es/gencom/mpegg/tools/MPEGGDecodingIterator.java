@@ -1,8 +1,8 @@
 package es.gencom.mpegg.tools;
 
 import es.gencom.integration.bam.BAMRecord;
-import es.gencom.mpegg.decoder.exceptions.InvalidSymbolException;
-import es.gencom.mpegg.decoder.exceptions.MissingRequiredDescriptorException;
+import es.gencom.mpegg.decoder.Exceptions.InvalidSymbolException;
+import es.gencom.mpegg.decoder.Exceptions.MissingRequiredDescriptorException;
 
 import java.io.IOException;
 import java.util.Iterator;

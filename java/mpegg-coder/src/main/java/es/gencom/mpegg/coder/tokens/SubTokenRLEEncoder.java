@@ -25,63 +25,23 @@
 
 package es.gencom.mpegg.coder.tokens;
 
-import es.gencom.mpegg.io.MPEGWriter;
-
+import es.gencom.mpegg.coder.compression.DescriptorEncoder;
 import java.io.IOException;
 
 public class SubTokenRLEEncoder implements SubTokenSequenceEncoder {
-    private final MPEGWriter writer;
-    private final short rleGuard;
-    private short currentValue;
-    private long currentLength;
+    private final DescriptorEncoder encoder;
 
-    public SubTokenRLEEncoder(MPEGWriter writer, short rleGuard) {
-        this.writer = writer;
-        this.rleGuard = rleGuard;
-        currentValue = rleGuard;
-        currentLength = 0;
+    public SubTokenRLEEncoder(final DescriptorEncoder encoder) {
+        this.encoder = encoder;
     }
 
     @Override
-    public void writeValue(short value) throws IOException {
-        if(value == rleGuard){
-            if(currentValue != rleGuard){
-                writeCurrentSymbol();
-            }
-            writer.writeUnsignedByte(rleGuard);
-            writer.writeU7(0);
-            currentValue = rleGuard;
-            currentLength = 1;
-
-        }
-        if(currentValue == value){
-            currentLength++;
-        }else{
-            if(currentValue != rleGuard) {
-                writeCurrentSymbol();
-            }
-            currentValue = value;
-            currentLength = 1;
-        }
-    }
-
-    private void writeCurrentSymbol() throws IOException {
-        if(currentLength != 1){
-            if(currentLength == 2){
-                writer.writeUnsignedByte(currentValue);
-                writer.writeUnsignedByte(currentValue);
-            }else {
-                writer.writeUnsignedByte(rleGuard);
-                writer.writeU7(currentLength);
-                writer.writeUnsignedByte(currentValue);
-            }
-        }else{
-            writer.writeUnsignedByte(currentValue);
-        };
+    public void writeValue(final short value) throws IOException {
+        encoder.write(value);
     }
 
     @Override
     public void close() throws IOException {
-        writeCurrentSymbol();
+        encoder.close();
     }
 }

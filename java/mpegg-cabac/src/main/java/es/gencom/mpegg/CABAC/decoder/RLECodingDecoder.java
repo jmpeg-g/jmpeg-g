@@ -42,9 +42,7 @@ public abstract class RLECodingDecoder implements SubsequenceTransformDecoder {
     private long sym_val;
     private long tot_run;
     
-    public RLECodingDecoder(
-            final short rle_coding_guard) {
-
+    public RLECodingDecoder(final short rle_coding_guard) {
         this.rle_coding_guard = rle_coding_guard;
     }
 

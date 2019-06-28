@@ -113,9 +113,9 @@ public class HalfMappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             AbstractSequencesSource sequencesSource,
             byte[] changedNucleotides,
             long[] changedPositions,
-            ALPHABET_ID alphabet_id
-    ) throws IOException {
-        Operation[][][] operations = new Operation[1][][];
+            ALPHABET_ID alphabet_id) throws IOException {
+
+        byte[][][] operations = new byte[1][][];
         int[][][] operationLength = new int[1][][];
         byte[][] decode_sequences;
         byte[][][] original_nucleotides = new byte[1][][];
@@ -141,13 +141,10 @@ public class HalfMappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
 
         return new SegmentsDecodingResult(
                 new byte[][][]{decode_sequences},
-                new Operation[][][][]{operations},
+                new byte[][][][]{operations},
                 new int[][][][]{operationLength},
-                new byte[][][][]{original_nucleotides}
-        );
+                new byte[][][][]{original_nucleotides});
     }
-
-
 
     @Override
     public boolean hasNext() throws IOException {
@@ -242,7 +239,6 @@ public class HalfMappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             alignedDecodingResult.getOriginal_nucleotides()[0],
             spliceLength,
             rCompSymbols[0],
-            new long[][]{{0},{0}}
-        );
+            new long[][]{{0},{0}});
     }
 }

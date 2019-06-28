@@ -23,7 +23,7 @@
  *****************************************************************************
  */
 
-package es.gencom.mpegg.decoder.exceptions;
+package es.gencom.mpegg.decoder.Exceptions;
 
 public class InvalidSymbolException extends Exception {
 

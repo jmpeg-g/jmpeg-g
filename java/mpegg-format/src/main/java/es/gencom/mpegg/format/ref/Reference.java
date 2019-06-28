@@ -187,4 +187,11 @@ public class Reference extends GenInfo<Reference> {
         return sequence_name.length;
     }
 
+    public String[] getSequenceNames() {
+        return sequence_name;
+    }
+
+    public REFERENCE_TYPE getReferenceType() {
+        return location.getReferenceType();
+    }
 }

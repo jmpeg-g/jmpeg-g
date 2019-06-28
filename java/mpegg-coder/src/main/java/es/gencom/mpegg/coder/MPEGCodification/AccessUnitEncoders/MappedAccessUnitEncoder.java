@@ -263,7 +263,7 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
     static void writeQualityAlignedSegment(
             long[] mappingPositions,
             int[][] operationLengths,
-            Operation[][] operations,
+            byte[][] operations,
             byte[] qualityBookIndexes,
             AbstractQualityValueParameterSet parameterSet,
             short[] qualities,
@@ -302,31 +302,28 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
 
 
 
-                for(
-                        int operationBase_i = 0;
+                for(int operationBase_i = 0;
                         operationBase_i < operationLengths[splice_i][operation_i];
-                        operationBase_i++
-                ) {
+                        operationBase_i++) {
+
                     numSymbols[DESCRIPTOR_ID.QV.ID][1] = Integer.max(
                             numSymbols[DESCRIPTOR_ID.QV.ID][1],
-                            Math.toIntExact(currentPosition)
-                    );
+                            Math.toIntExact(currentPosition));
+
                     short encoded = parameterSet.getQualityBook(codebookId).encode(qualities[currentQualityIndex]);
-                    addSymbol(
-                            encoded,
-                            DESCRIPTOR_ID.QV,
-                            (byte) (codebookId + 2),
-                            symbols,
-                            numSymbols
-                    );
+                    addSymbol(encoded,
+                              DESCRIPTOR_ID.QV,
+                              (byte)(codebookId + 2),
+                              symbols,
+                              numSymbols);
                     currentQualityIndex++;
                 }
 
 
                 if(operations[splice_i][operation_i] == Operation.Match
                         || operations[splice_i][operation_i] == Operation.Substitution
-                        || operations[splice_i][operation_i] == Operation.SubstitutionToN
-                ){
+                        || operations[splice_i][operation_i] == Operation.SubstitutionToN) {
+
                     currentPosition++;
                 }
             }
@@ -346,35 +343,37 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
             Record record,
             int templateRecordSegments,
             long[][][] symbolValues,
-            int[][] numberSymbols
-    ){
-        if(templateRecordSegments == 1){
+            int[][] numberSymbols) {
+
+        if(templateRecordSegments == 1) {
             return;
         }
+
         if(record.isUnpaired()){
-            if(!record.isRead1First()){
+            if(!record.isRead1First()) {
                 addSymbol(5, DESCRIPTOR_ID.PAIR, (byte)0, symbolValues, numberSymbols);
-            }else{
+            } else {
                 addSymbol(6, DESCRIPTOR_ID.PAIR, (byte)0, symbolValues, numberSymbols);
             }
             return;
         }
-        if(!record.isTwoSegmentsStoredTogether()){
-            if(record.isFirstAlignmentSegment1SameSequence()){
-                if(!record.isRead1First()){
+
+        if(!record.isTwoSegmentsStoredTogether()) {
+            if(record.isFirstAlignmentSegment1SameSequence()) {
+                if(!record.isRead1First()) {
                     addSymbol(1, DESCRIPTOR_ID.PAIR, (byte)0, symbolValues, numberSymbols);
-                }else{
+                } else {
                     addSymbol(2, DESCRIPTOR_ID.PAIR, (byte)0, symbolValues, numberSymbols);
                 }
-            }else {
+            } else {
                 if(!record.isRead1First()){
                     addSymbol(3, DESCRIPTOR_ID.PAIR, (byte)0, symbolValues, numberSymbols);
-                }else{
+                } else {
                     addSymbol(4, DESCRIPTOR_ID.PAIR, (byte)0, symbolValues, numberSymbols);
                 }
             }
-        }else{
-            if(record.isSegment1Unmapped()){
+        } else {
+            if(record.isSegment1Unmapped()) {
                 if(record.isTwoSegmentsStoredTogether()) {
                     if (record.isRead1First()) {
                         addSymbol(0, DESCRIPTOR_ID.PAIR, (byte) 0, symbolValues, numberSymbols);
@@ -382,7 +381,7 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                         addSymbol(1, DESCRIPTOR_ID.PAIR, (byte) 0, symbolValues, numberSymbols);
                     }
                 }
-            }else {
+            } else {
                 addSymbol(0, DESCRIPTOR_ID.PAIR, (byte) 0, symbolValues, numberSymbols);
             }
         }
@@ -487,8 +486,8 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
             long readsLengthParameter,
             boolean splicedReads,
             long[][][] symbolValues,
-            int[][] numberSymbols
-    ){
+            int[][] numberSymbols) {
+
         boolean hasSplicedReads = false;
         for(int segment_i=0; segment_i < spliceLength.length; segment_i++){
             if(spliceLength[segment_i]!= null && spliceLength[segment_i][0].length != 1){
@@ -496,15 +495,15 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 break;
             }
         }
-        if(hasSplicedReads && readsLengthParameter != 0){
+        if(hasSplicedReads && readsLengthParameter != 0) {
             throw new IllegalArgumentException();
         }
 
-        if(hasSplicedReads && !splicedReads){
+        if(hasSplicedReads && !splicedReads) {
             throw new IllegalArgumentException();
         }
 
-        if(readsLengthParameter != 0){
+        if(readsLengthParameter != 0) {
             return;
         }
 
@@ -931,19 +930,18 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
         return result;
     }
 
-    static Operation[][][] combinePerSpliceMMType(
-            Operation[][][][] mmType
-    ){
-        Operation[][][] result = new Operation[mmType.length][][];
-        for(int alignedRecordSegment_i = 0; alignedRecordSegment_i < mmType.length; alignedRecordSegment_i++){
-            result[alignedRecordSegment_i] = new Operation[mmType[alignedRecordSegment_i].length][];
+    static byte[][][] combinePerSpliceMMType(byte[][][][] mmType) {
+
+        byte[][][] result = new byte[mmType.length][][];
+        for(int alignedRecordSegment_i = 0; alignedRecordSegment_i < mmType.length; alignedRecordSegment_i++) {
+            result[alignedRecordSegment_i] = new byte[mmType[alignedRecordSegment_i].length][];
             for(int alignment_i=0; alignment_i<mmType[alignedRecordSegment_i].length; alignment_i++) {
                 int numberOffsetsInAlignment = 0;
                 for (int splice_i = 0; splice_i < mmType[alignedRecordSegment_i][alignment_i].length; splice_i++) {
                     numberOffsetsInAlignment += mmType[alignedRecordSegment_i][alignment_i][splice_i].length;
                 }
 
-                result[alignedRecordSegment_i][alignment_i] = new Operation[numberOffsetsInAlignment];
+                result[alignedRecordSegment_i][alignment_i] = new byte[numberOffsetsInAlignment];
 
                 int mmOffsets_i = 0;
                 for (
@@ -974,9 +972,9 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
             byte[][][] auxiliaryData,
             int[][] numAuxiliaryData,
             ALPHABET_ID alphabet_id,
-            AbstractSequencesSource sequencesSource
-    ) throws IOException {
-        for(int alignedSegment_i=0; alignedSegment_i<record.getAlignedSegments(); alignedSegment_i++){
+            AbstractSequencesSource sequencesSource) throws IOException {
+
+        for(int alignedSegment_i=0; alignedSegment_i<record.getAlignedSegments(); alignedSegment_i++) {
             writeMMposAndMMtypeSegment(
                 dataClass,
                 record,
@@ -1004,23 +1002,22 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
     ) throws IOException {
         int alignment_i = 0;
         int offsetDeltaDueToSplice = 0;
-        for(
-                int splice_i=0;
+        for(int splice_i=0;
                 splice_i<record.getOperationType()[segment_i][alignment_i].length;
-                splice_i++
-        ){
-            Operation[] originalOperations = record.getOperationType()[segment_i][alignment_i][splice_i];
+                splice_i++) {
+
+            byte[] originalOperations = record.getOperationType()[segment_i][alignment_i][splice_i];
             int lengthFirstSoftClip = 0;
             int lengthLastSoftClip = 0;
             int retainFrom;
-            if(originalOperations[0] == Operation.HardClip){
-                if(originalOperations[1] == Operation.SoftClip){
+            if(originalOperations[0] == Operation.HardClip) {
+                if(originalOperations[1] == Operation.SoftClip) {
                     retainFrom = 2;
                     lengthFirstSoftClip = record.getOperationLength()[segment_i][alignment_i][splice_i][1];
-                }else{
+                } else {
                     retainFrom = 1;
                 }
-            }else{
+            } else {
                 if(originalOperations[0] == Operation.SoftClip){
                     retainFrom = 1;
                     lengthFirstSoftClip = record.getOperationLength()[segment_i][alignment_i][splice_i][0];
@@ -1029,18 +1026,18 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 }
             }
             int retainTo;
-            if(originalOperations[originalOperations.length-1] == Operation.HardClip){
-                if(originalOperations[originalOperations.length-2] == Operation.SoftClip){
-                    retainTo = originalOperations.length-2;
+            if(originalOperations[originalOperations.length - 1] == Operation.HardClip) {
+                if(originalOperations[originalOperations.length - 2] == Operation.SoftClip) {
+                    retainTo = originalOperations.length - 2;
                     lengthLastSoftClip = record.getOperationLength()
                             [segment_i]
                             [alignment_i]
                             [splice_i]
                             [originalOperations.length-2];
-                }else{
+                } else {
                     retainTo = originalOperations.length-1;
                 }
-            }else{
+            } else {
                 if(originalOperations[originalOperations.length-1] == Operation.SoftClip){
                     retainTo = originalOperations.length-1;
                     lengthLastSoftClip = record.getOperationLength()
@@ -1053,7 +1050,7 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 }
             }
 
-            Operation[] operations = new Operation[retainTo - retainFrom];
+            byte[] operations = new byte[retainTo - retainFrom];
             int[] operationsLength = new int[retainTo - retainFrom];
             System.arraycopy(originalOperations, retainFrom, operations, 0, retainTo - retainFrom);
             try {
@@ -1062,24 +1059,21 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                         retainFrom,
                         operationsLength,
                         0,
-                        retainTo - retainFrom
-                );
-            }catch (ArrayStoreException e){
-                throw e;
+                        retainTo - retainFrom);
+            } catch (ArrayStoreException e) {
+                throw e; // ???
             }
 
             long startPos = segment_i == 0 ?
                     record.getMappingPositionsSegment0()[alignment_i][splice_i] :
                     record.getMappingPositionsSegment1()[alignment_i][splice_i];
+
             long maxLength = record.getSpliceLengths()[segment_i][0][splice_i];
-            for(
-                    int operation_i=0;
+            for(int operation_i = 0;
                     operation_i < operations.length;
-                    operation_i++
-            ){
-                if(
-                        operations[operation_i] == Operation.Delete
-                ){
+                    operation_i++) {
+
+                if(operations[operation_i] == Operation.Delete) {
                     maxLength++;
                 }
             }
@@ -1112,7 +1106,7 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
 
     static void writeMMposAndMMtypeForOneSegmentOneAlignmentOneSplice(
             DATA_CLASS dataClass,
-            Operation[] operations,
+            byte[] operations,
             int[] operationLength,
             byte[] nucleotidesRead,
             Payload referenceSequence,
@@ -1143,15 +1137,15 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
         }
 
         long previousReportedPosition = 0;
-        Operation previousOperation = Operation.Match;
+        byte previousOperation = Operation.Match;
 
         int previousDeletes = 0;
 
-        for(int i=firstOperation; i<operations.length; i++){
-            Operation mutationTypeIdentifier;
+        for(int i=firstOperation; i<operations.length; i++) {
+            byte mutationTypeIdentifier;
             byte newBaseIdentifier = 0;
             byte oldBaseIdentifier = 0;
-            Operation currentOperation;
+            byte currentOperation;
 
             if(operations[i] != Operation.Match && dataClass == DATA_CLASS.CLASS_P){
                 throw new IllegalArgumentException();
@@ -1161,42 +1155,41 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 mutationTypeIdentifier = operations[i];
                 oldBaseIdentifier = S_alphabets.charToId(
                         alphabet_id,
-                        (char)referenceSequence.readByte()
-                );
+                        (char)referenceSequence.readByte());
 
                 newBaseIdentifier = S_alphabets.charToId(
                         alphabet_id,
-                        (char) nucleotidesRead[positionOnReadSequence]
-                );
+                        (char) nucleotidesRead[positionOnReadSequence]);
 
-                if(nucleotidesRead[positionOnReadSequence] != 'N' && dataClass == DATA_CLASS.CLASS_N){
+                if(nucleotidesRead[positionOnReadSequence] != 'N' && dataClass == DATA_CLASS.CLASS_N) {
                     throw new IllegalArgumentException();
                 }
+
                 currentOperation = operations[i];
-            }else if(operations[i] == Operation.Insert){
+            } else if(operations[i] == Operation.Insert) {
                 mutationTypeIdentifier = Operation.Insert;
                 newBaseIdentifier = S_alphabets.charToId(
                         alphabet_id,
-                        (char) nucleotidesRead[positionOnReadSequence]
-                );
+                        (char) nucleotidesRead[positionOnReadSequence]);
+                
                 if(dataClass!=DATA_CLASS.CLASS_HM && dataClass != DATA_CLASS.CLASS_I){
                     throw new IllegalArgumentException();
                 }
                 currentOperation = Operation.Insert;
-            }else if(operations[i] == Operation.Delete){
+            } else if(operations[i] == Operation.Delete) {
                 mutationTypeIdentifier = Operation.Delete;
-                if(dataClass!=DATA_CLASS.CLASS_HM && dataClass != DATA_CLASS.CLASS_I){
+                if(dataClass!=DATA_CLASS.CLASS_HM && dataClass != DATA_CLASS.CLASS_I) {
                     throw new IllegalArgumentException();
                 }
                 currentOperation = Operation.Delete;
-            }else if(operations[i] == Operation.Match){
+            } else if(operations[i] == Operation.Match) {
                 positionOnReadSequence += operationLength[i];
                 positionOnReferenceSequence += operationLength[i];
                 referenceSequence.readByte();
                 continue;
-            }else if(operations[i] == Operation.SoftClip && (i == operations.length-1 || i == operations.length-2)) {
+            } else if(operations[i] == Operation.SoftClip && (i == operations.length-1 || i == operations.length-2)) {
                 break;
-            }else{
+            } else {
                 throw new IllegalArgumentException();
             }
 
@@ -1234,10 +1227,9 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 }
 
 
-                if (
-                        (mutationTypeIdentifier == Operation.SubstitutionToN )
-                                || mutationTypeIdentifier == Operation.Substitution
-                ) {
+                if (mutationTypeIdentifier == Operation.SubstitutionToN || 
+                    mutationTypeIdentifier == Operation.Substitution) {
+                    
                     addAuxiliarySymbol((byte) oldBaseIdentifier, DESCRIPTOR_ID.MMTYPE, (byte) 1, auxiliaryData, numAuxiliaryData);
                     addSymbol(newBaseIdentifier, DESCRIPTOR_ID.MMTYPE, (byte) 1, symbols, numSymbols);
                 } else if (mutationTypeIdentifier == Operation.Insert) {
@@ -1245,14 +1237,13 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 }
             }
 
-            if(operations[i] == Operation.Substitution || operations[i] == Operation.SubstitutionToN){
+            if(operations[i] == Operation.Substitution || operations[i] == Operation.SubstitutionToN) {
                 positionOnReadSequence++;
-            }else if(operations[i] == Operation.Insert){
+            } else if(operations[i] == Operation.Insert) {
                 positionOnReadSequence++;
-            }else if(operations[i] == Operation.Delete){
+            } else if(operations[i] == Operation.Delete){
                 referenceSequence.readByte();
             }
-
         }
         addSymbol(1, DESCRIPTOR_ID.MMPOS, (byte)0, symbols, numSymbols);
     }

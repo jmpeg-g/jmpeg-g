@@ -95,6 +95,10 @@ public class Token {
         return new Token(AlphaToken, 0, 0, (byte) 0, 0, value.getBytes(StandardCharsets.US_ASCII));
     }
 
+    public static Token createStringToken(byte[] value){
+        return new Token(AlphaToken, 0, 0, (byte) 0, 0, value);
+    }
+
     public static Token createDeltaDigits(long value, Token baseToken){
         checkConformityForDeltaDigitsToken(value, baseToken);
 

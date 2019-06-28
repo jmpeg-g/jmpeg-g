@@ -37,14 +37,4 @@ public enum SplitType {
     SplitType(final byte id) {
         this.id = id;
     }
-
-    public static es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation fromValue(byte id) {
-        for (es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation clazz : es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation.values()) {
-            if (clazz.id == id) {
-                return clazz;
-            }
-        }
-        throw new IllegalArgumentException(Byte.toString(id));
-    }
-
 }

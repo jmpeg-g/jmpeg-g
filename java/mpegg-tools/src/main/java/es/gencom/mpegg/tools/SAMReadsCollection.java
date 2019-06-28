@@ -73,7 +73,7 @@ public class SAMReadsCollection implements Iterable<SAMLikeAlignment> {
                 matePosition = 0;
             }
 
-            Operation[][] operationsMerged = new Operation[record.getOperationType()[0][alignment_i].length][];
+            byte[][] operationsMerged = new byte[record.getOperationType()[0][alignment_i].length][];
             int[][] operationLengthsMerged = new int[record.getOperationLength()[0][alignment_i].length][];
             for(int splice_i=0; splice_i < operationsMerged.length; splice_i++){
                 SAMLikeAlignment.mergeOperations(
@@ -135,7 +135,7 @@ public class SAMReadsCollection implements Iterable<SAMLikeAlignment> {
                 SequenceIdentifier mateSequenceIdentifier = record.getSequenceId();
                 long matePosition = record.getMappingPositionsSegment0()[0][0];
 
-                Operation[][] operationsMerged = new Operation[record.getOperationType()[1][alignment_i].length][];
+                byte[][] operationsMerged = new byte[record.getOperationType()[1][alignment_i].length][];
                 int[][] operationLengthsMerged = new int[record.getOperationLength()[1][alignment_i].length][];
                 for (int splice_i = 0; splice_i < operationsMerged.length; splice_i++) {
                     SAMLikeAlignment.mergeOperations(
@@ -155,13 +155,11 @@ public class SAMReadsCollection implements Iterable<SAMLikeAlignment> {
                         record.getQualityValues()[1][0],
                         SAMLikeAlignment.getCigarString(
                                 operationsMerged,
-                                operationLengthsMerged
-                        ),
+                                operationLengthsMerged),
                         SAMLikeAlignment.getMDTag(
                                 operationsMerged,
                                 operationLengthsMerged,
-                                record.getOriginalBase()[1][alignment_i]
-                        ),
+                                record.getOriginalBase()[1][alignment_i]),
                         record.getReverseCompliment()[1][alignment_i][0],
                         noMate,
                         mateSequenceIdentifier,

@@ -22,34 +22,50 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
             DataUnits dataUnits,
             boolean use40BitsPositions,
             short referenceId,
-            int default_threshold
+            int default_threshold,
+            Alphabet alphabet
     ){
         DatasetContainer datasetContainer = new DatasetContainer();
 
-
+        DatasetType dataset_type = inferDatasetType(dataUnits);
         boolean multiple_alignment_flag = inferMultiAlignment(dataUnits);
-        boolean byte_offset_size_flag = use40BitsPositions;
+        boolean byte_offset_size_flag = dataset_type == DatasetType.REFERENCE || use40BitsPositions;
         boolean non_overlapping_au_range = inferNonOverlapping(dataUnits);
         boolean pos_40_bits = use40BitsPositions;
         boolean block_header_flag = true;
         boolean MIT_flag = false;
         short reference_id = referenceId;
-        Reference reference = datasetGroupContainer.getReference(reference_id);
-        boolean CC_mode_flag = inferClassContiguousFlag(reference, dataUnits);
-        boolean ordered_blocks_flag = true;
-        long[] seq_blocks = countBlocksPerSequence(reference, dataUnits);
-        SequenceIdentifier[] seqId = createSequenceIdentifiers(reference, seq_blocks);
-        seq_blocks = discardZeros(seq_blocks);
-        DatasetType dataset_type = inferDatasetType(dataUnits);
+
         DATA_CLASS[] dataClasses = getDataClasses(dataUnits);
+        boolean CC_mode_flag = true;
+        long[] seq_blocks = new long[0];
+        Reference reference;
+        SequenceIdentifier[] seqId = new SequenceIdentifier[0];
+        int[][] allocatedMappedAuIds = new int[0][];
+        try {
+            reference = datasetGroupContainer.getReference(reference_id);
+            seq_blocks = countBlocksPerSequence(reference, dataUnits);
+            CC_mode_flag = inferClassContiguousFlag(reference, dataUnits);
+            seqId = createSequenceIdentifiers(reference, seq_blocks);
+            allocatedMappedAuIds = new int[reference.getNumberSequences()][5];
+        } catch (Exception e){
+            if(!(dataClasses.length == 1 && dataClasses[0]==DATA_CLASS.CLASS_U)){
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        boolean ordered_blocks_flag = true;
+
+
+        seq_blocks = discardZeros(seq_blocks);
+
         DESCRIPTOR_ID[][] descriptorIdentifiers = getDescriptorIdentifiers(dataUnits, dataClasses);
-        Alphabet alphabet = Alphabet.DNA_IUPAC;
         long num_u_access_units = countNonAligned(dataUnits);
         long num_u_clusters = 0;
         int multiple_signature_base = 0;
         byte u_signature_size = 0;
         boolean u_signature_constant_length = true;
-        short u_signature_length = 0;
+        short u_signature_length = 32;
         int[] thresholds = new int[seqId.length];
         Arrays.fill(thresholds, default_threshold);
 
@@ -110,7 +126,6 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
         datasetContainer.setDatasetHeader(datasetHeader);
         datasetGroupContainer.addDatasetContainer(datasetContainer);
 
-        int[][] allocatedMappedAuIds = new int[reference.getNumberSequences()][5];
         int allocatedUnmappedAUIds = 0;
 
         for(DataUnitAccessUnit accessUnit : dataUnits.getDataUnitAccessUnits()){

@@ -54,7 +54,7 @@ public class Record {
     //dimensions: segment, alignment, splice; stores the length of the splices
     private final long[][][] lengthSplices;
     //dimensions: segment, alignment, splice, operation index
-    final private Operation[][][][] operationType;
+    final private byte[][][][] operationType;
     //dimensions: segment, alignment, splice, operation index
     final private int[][][][] operationLength;
     //dimensions: segment, alignment, splice, operation index
@@ -83,7 +83,7 @@ public class Record {
             SequenceIdentifier[] sequenceMappingPositionSegment1,
             long[][] mappingPositionsSegment1,
             long[][][] lengthSplices,
-            Operation[][][][] operationType,
+            byte[][][][] operationType,
             int[][][][] operationLength,
             byte[][][][] originalBase,
             boolean[][][] reverseCompliment,
@@ -116,10 +116,10 @@ public class Record {
 
         for(int segment_i=0; segment_i<operationType.length; segment_i++){
             if(operationType[segment_i] == null){
-                operationType[segment_i] = new Operation[0][][];
+                operationType[segment_i] = new byte[0][][];
             }
             if(operationLength[segment_i] == null){
-                operationType[segment_i] = new Operation[0][][];
+                operationType[segment_i] = new byte[0][][];
             }
         }
 
@@ -276,37 +276,36 @@ public class Record {
                 softclips[alignedSegment_i][1] = new byte[0];
                 continue;
             }
-            Operation[] operationsFirstSplice = operationType[alignedSegment_i][0][0];
+            byte[] operationsFirstSplice = operationType[alignedSegment_i][0][0];
             int softClipStartPosition = -1;
-            if(operationsFirstSplice[0] == Operation.HardClip){
-                if(operationsFirstSplice[1] == Operation.SoftClip){
+            if(operationsFirstSplice[0] == Operation.HardClip) {
+                if(operationsFirstSplice[1] == Operation.SoftClip) {
                     softClipStartPosition = 1;
                 }
-            }else if(operationsFirstSplice[0] == Operation.SoftClip){
+            } else if(operationsFirstSplice[0] == Operation.SoftClip) {
                 softClipStartPosition = 0;
             }
 
-            if(softClipStartPosition != -1){
+            if(softClipStartPosition != -1) {
                 softclips[alignedSegment_i][0] = Arrays.copyOfRange(
                         sequenceBytes[alignedSegment_i],
                         0,
-                        operationLength[alignedSegment_i][0][0][softClipStartPosition]
-                );
-            }else{
+                        operationLength[alignedSegment_i][0][0][softClipStartPosition]);
+            } else {
                 softclips[alignedSegment_i][0] = new byte[]{};
             }
 
-            Operation[] operationsLastSplice = operationType
+            byte[] operationsLastSplice = operationType
                     [alignedSegment_i]
-                    [operationType[alignedSegment_i].length-1]
-                    [operationType[alignedSegment_i][operationType[alignedSegment_i].length-1].length-1];
+                    [operationType[alignedSegment_i].length - 1]
+                    [operationType[alignedSegment_i][operationType[alignedSegment_i].length - 1].length - 1];
             int softClipEndPosition = -1;
-            if(operationsLastSplice[operationsLastSplice.length-1] == Operation.HardClip){
-                if(operationsLastSplice[operationsLastSplice.length-2] == Operation.SoftClip){
-                    softClipEndPosition = operationsLastSplice.length-2;
+            if(operationsLastSplice[operationsLastSplice.length - 1] == Operation.HardClip) {
+                if(operationsLastSplice[operationsLastSplice.length - 2] == Operation.SoftClip) {
+                    softClipEndPosition = operationsLastSplice.length - 2;
                 }
-            }else if(operationsLastSplice[operationsLastSplice.length-1] == Operation.SoftClip){
-                softClipEndPosition = operationsLastSplice.length-1;
+            } else if(operationsLastSplice[operationsLastSplice.length - 1] == Operation.SoftClip) {
+                softClipEndPosition = operationsLastSplice.length - 1;
             }
 
             if(softClipEndPosition != -1){
@@ -337,15 +336,14 @@ public class Record {
                 hardclips[alignedSegment_i][1] = 0;
                 continue;
             }
-            Operation[] operationsFirstSplice = operationType[alignedSegment_i][0][0];
-            if(operationsFirstSplice[0] == Operation.HardClip){
+            byte[] operationsFirstSplice = operationType[alignedSegment_i][0][0];
+            if(operationsFirstSplice[0] == Operation.HardClip) {
                 hardclips[alignedSegment_i][0] = operationLength[alignedSegment_i][0][0][0];
-            }else{
+            } else {
                 hardclips[alignedSegment_i][0] = 0;
             }
 
-
-            Operation[] operationsLastSplice = operationType
+            byte[] operationsLastSplice = operationType
                     [alignedSegment_i]
                     [operationType[alignedSegment_i].length-1]
                     [operationType[alignedSegment_i][operationType[alignedSegment_i].length-1].length-1];
@@ -356,7 +354,7 @@ public class Record {
                                 [operationType[alignedSegment_i].length-1]
                                 [operationType[alignedSegment_i][operationType[alignedSegment_i].length-1].length-1]
                                 [operationsLastSplice.length-1];
-            }else{
+            } else {
                 hardclips[alignedSegment_i][1] = 0;
             }
         }
@@ -368,7 +366,7 @@ public class Record {
         return reverseCompliment;
     }
 
-    public Operation[][][][] getOperationType() {
+    public byte[][][][] getOperationType() {
         return operationType;
     }
 

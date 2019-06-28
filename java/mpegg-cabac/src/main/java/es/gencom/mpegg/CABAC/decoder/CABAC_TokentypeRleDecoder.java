@@ -25,9 +25,6 @@
 
 package es.gencom.mpegg.CABAC.decoder;
 
-import es.gencom.mpegg.CABAC.configuration.DefaultCodecConfigurations;
-import es.gencom.mpegg.CABAC.configuration.subseq.CABAC_SubsequenceConfiguration;
-import es.gencom.mpegg.coder.compression.COMPRESSION_METHOD_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.io.MPEGReader;
@@ -35,63 +32,58 @@ import java.io.EOFException;
 import java.io.IOException;
 
 /**
+ * <p>
+ * Get over the specification quirk where 'rle_guard_tokentype' parameter is 
+ * stored in CABAC configuration while its usage is out of CABAC context.
+ * </p>
+ * The class implements IEC 23092-2 10.4.19.3.3 RLE
+ * 
  * @author Dmitry Repchevsky &amp; Daniel Naro
  */
 
-public class CABAC_TokentypeDecoder extends DescriptorDecoder {
-
-    private final SubsequenceTransformDecoder decoder;
-
-    private int count;
-    private final long numOutputSymbols;
-            
-    public CABAC_TokentypeDecoder(
-            final MPEGReader reader,
-            final long numOutputSymbols,
-            final DESCRIPTOR_ID descriptor_id,
-            final COMPRESSION_METHOD_ID compression_method_id) throws IOException {
-
-        this(numOutputSymbols, descriptor_id, new CABAC_NoTransformDecoder(
-                reader,
-                DefaultCodecConfigurations.getDefaultCodecConfiguration(compression_method_id),
-                DefaultCodecConfigurations.getDefaultBinarization(compression_method_id),
-                true, // adaptive_mode_flag
-                null /* ref_source */));
-    }
+public class CABAC_TokentypeRleDecoder extends DescriptorDecoder {
     
-    public CABAC_TokentypeDecoder(
+    private final MPEGReader reader;
+    private final short rle_guard_tokentype;
+
+    private long numOutputSymbols;
+    private short sym_val;
+    private long rle_len;
+
+    public CABAC_TokentypeRleDecoder(
             final MPEGReader reader,
-            final long numOutputSymbols,
             final DESCRIPTOR_ID descriptor_id,
-            CABAC_SubsequenceConfiguration configuration) 
-            throws IOException {
-
-        this(numOutputSymbols, descriptor_id, 
-                configuration.getDecoder(reader, null, descriptor_id, null));
-    }
-
-    private CABAC_TokentypeDecoder(
             final long numOutputSymbols,
-            final DESCRIPTOR_ID descriptor_id,
-            final SubsequenceTransformDecoder decoder) {
-        
+            final short rle_guard_tokentype) throws IOException {
+
         super(descriptor_id);
-
+        
+        this.reader = reader;
         this.numOutputSymbols = numOutputSymbols;
-        this.decoder = decoder;
+        this.rle_guard_tokentype = rle_guard_tokentype;
     }
 
     @Override
     public boolean hasNext() throws IOException {
-        return count < numOutputSymbols;
+        return numOutputSymbols > 0;
     }
 
     @Override
     public long read() throws IOException {
-        if (hasNext()) {
-            count++;
-            return decoder.read();
+        if(--numOutputSymbols < 0) {
+            throw new EOFException();
         }
-        throw new EOFException();
+        
+        if (--rle_len < 0) {
+            sym_val = reader.readUnsignedByte();
+            if (sym_val == rle_guard_tokentype) {
+                rle_len = reader.readVarSizedUnsignedInt();
+                if (rle_len-- > 0) {
+                    sym_val = reader.readUnsignedByte();
+                }
+            }
+        }
+        
+        return sym_val;
     }
 }

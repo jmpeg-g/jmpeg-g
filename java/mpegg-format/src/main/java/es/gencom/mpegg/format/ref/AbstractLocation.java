@@ -30,8 +30,9 @@ import es.gencom.mpegg.io.MPEGWriter;
 
 import java.io.IOException;
 
-public abstract class AbstractLocation {
-    public abstract void read(MPEGReader reader, int numberSequences) throws IOException;
-    public abstract void write(MPEGWriter writer) throws IOException;
-    public abstract long size();
+public interface AbstractLocation {
+    void read(MPEGReader reader, int numberSequences) throws IOException;
+    void write(MPEGWriter writer) throws IOException;
+    long size();
+    REFERENCE_TYPE getReferenceType();
 }

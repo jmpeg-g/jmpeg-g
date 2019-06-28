@@ -39,12 +39,19 @@ public class DatasetToDataUnits {
             DatasetGroupContainer datasetGroupContainer,
             DatasetContainer datasetContainer
     ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException, NoSuchFieldException {
-        Reference reference = datasetGroupContainer.getReference(datasetContainer.getDatasetHeader().getReferenceId());
+        Reference reference;
+        try {
+            reference = datasetGroupContainer.getReference(datasetContainer.getDatasetHeader().getReferenceId());
+        } catch (IndexOutOfBoundsException e){
+            reference = null;
+        }
+
         DataUnitsExtractor dataUnitsExtractor = new DataUnitsExtractor(reference);
         addParameters(dataUnitsExtractor, datasetContainer);
         for(SequenceIdentifier sequenceIdentifier : datasetContainer.getDatasetHeader().getSeqIds()){
             getDataUnits(dataUnitsExtractor, datasetContainer, sequenceIdentifier, 0, Long.MAX_VALUE);
         }
+        getUnmappedDataUnits(dataUnitsExtractor, datasetContainer);
         return dataUnitsExtractor.constructDataUnits();
     }
 
@@ -80,6 +87,142 @@ public class DatasetToDataUnits {
                     sequenceIdentifier,
                     start,
                     end
+            );
+        }
+    }
+
+    public static void getUnmappedDataUnits(
+            DataUnitsExtractor dataUnitsExtractor,
+            DatasetContainer datasetContainer
+    ) throws IOException {
+
+
+        if(datasetContainer.getDatasetHeader().isBlockHeader()){
+            if(!datasetContainer.getDatasetHeader().isMIT()){
+                addDataUnitsBlockHeadersNoMITUnmapped(dataUnitsExtractor, datasetContainer);
+            } else {
+                addDataUnitsBlockHeadersMITUnmapped(dataUnitsExtractor, datasetContainer);
+            }
+        } else {
+            getDataUnitsNoBlockHeaderUnmapped(dataUnitsExtractor, datasetContainer);
+        }
+    }
+
+    private static void getDataUnitsNoBlockHeaderUnmapped(
+        DataUnitsExtractor dataUnitsExtractor,
+        DatasetContainer datasetContainer
+    ) throws IOException {
+        long unmappedBlocksNumber = datasetContainer.getDatasetHeader().getNumberUAccessUnits();
+
+        DataClassIndex dataClassIndex;
+        try {
+            dataClassIndex = datasetContainer.getDatasetHeader().getClassIndex(DATA_CLASS.CLASS_U);
+        } catch (DataClassNotFoundException e){
+            throw new IllegalArgumentException(e);
+        }
+        for(int block_i=0; block_i<unmappedBlocksNumber; block_i++){
+            AccessUnitContainer accessUnitContainer = datasetContainer.getUnalignedAccessUnitContainer(block_i);
+            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClass_ids();
+
+            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+                    block_i,
+                    accessUnitContainer.getAccessUnitHeader().getNumberOfBlocks(),
+                    accessUnitContainer.getAccessUnitHeader().getParameterSetID(),
+                    accessUnitContainer.getAccessUnitHeader().getAUType(),
+                    accessUnitContainer.getAccessUnitHeader().getReadsCount(),
+                    accessUnitContainer.getAccessUnitHeader().getMmThreshold(),
+                    accessUnitContainer.getAccessUnitHeader().getMmCount(),
+                    accessUnitContainer.getAccessUnitHeader().getReferenceSequenceID(),
+                    accessUnitContainer.getAccessUnitHeader().getRefStartPosition(),
+                    accessUnitContainer.getAccessUnitHeader().getRefEndPosition(),
+                    null,
+                    0,
+                    0,
+                    accessUnitContainer.getAccessUnitHeader().getExtendedAUStartPosition(),
+                    accessUnitContainer.getAccessUnitHeader().getExtendedAUEndPosition()
+            );
+
+            byte[] descriptor_ids;
+
+            try {
+                descriptor_ids = datasetContainer.getDatasetHeader().getDescriptors(
+                        accessUnitContainer.getAccessUnitHeader().getAUType()
+                );
+            } catch (DataClassNotFoundException e) {
+                throw new IllegalArgumentException(e);
+            }
+
+            int numDescriptors = descriptor_ids.length;
+            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[numDescriptors];
+
+            DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
+                    accessUnitContainer.getAccessUnitHeader().getParameterSetID()
+            );
+            EncodingParameters encodingParameters = new EncodingParameters();
+            ByteBuffer byteBuffer = parameterSet.getParameters();
+            byteBuffer.rewind();
+            encodingParameters.read(new MSBitBuffer(byteBuffer));
+
+            for(int descriptor_i=0; descriptor_i<numDescriptors; descriptor_i++){
+                byte descriptor_id = descriptor_ids[descriptor_i];
+                try {
+                    DescriptorIndex descriptorIndex = datasetContainer.getDatasetHeader().getDescriptorIndex(
+                            accessUnitContainer.getAccessUnitHeader().getAUType(),
+                            descriptor_id
+                    );
+
+                    long startDescriptor = datasetContainer.getMasterIndexTable().getUnmappedBlockByteOffset(
+                            block_i,
+                            descriptorIndex
+                    );
+
+
+                    Payload allSubsequences;
+
+                    try {
+                        long endDescriptor = datasetContainer.getMasterIndexTable().getUnmappedNextBlockStart(
+                                block_i,
+                                descriptorIndex
+                        );
+
+                        allSubsequences = datasetContainer
+                                .getDescriptorStreamContainers()
+                                .get(dataClassIndex.getIndex())
+                                .get(descriptorIndex.getDescriptor_index())
+                                .getPayloadFromTo(startDescriptor, endDescriptor);
+                    } catch (NullPointerException e) {
+                        allSubsequences = datasetContainer
+                                .getDescriptorStreamContainers()
+                                .get(dataClassIndex.getIndex())
+                                .get(descriptorIndex.getDescriptor_index())
+                                .getPayloadFromToEnd(startDescriptor);
+                    }
+                    allSubsequences.rewind();
+                    long blockSize = allSubsequences.remaining();
+
+                    Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                            DESCRIPTOR_ID.getDescriptorId(descriptor_id),
+                            encodingParameters,
+                            header.getAU_type(),
+                            allSubsequences,
+                            blockSize
+                    );
+
+                    blocks[descriptor_i] = new DataUnitAccessUnit.Block(
+                            DESCRIPTOR_ID.getDescriptorId(descriptor_id),
+                            subsequences
+                    );
+                } catch (NoSuchFieldException | DataClassNotFoundException e){
+                    throw new IllegalArgumentException(e);
+                }
+            }
+            DataUnitAccessUnit dataUnitAccessUnit = new DataUnitAccessUnit(
+                    header,
+                    dataUnitsExtractor.getDataUnits(),
+                    blocks
+            );
+            dataUnitsExtractor.addDataUnitAccessUnit(
+                    dataUnitAccessUnit
             );
         }
     }
@@ -232,7 +375,9 @@ public class DatasetToDataUnits {
                         dataUnitsExtractor.getDataUnits(),
                         blocks
                 );
-                dataUnitsExtractor.addDataUnitAccessUnit(dataUnitAccessUnit);
+                dataUnitsExtractor.addDataUnitAccessUnit(
+                        dataUnitAccessUnit
+                );
             }
         }
     }
@@ -328,8 +473,131 @@ public class DatasetToDataUnits {
                     dataUnitsExtractor.getDataUnits(),
                     blocks
             );
-            dataUnitsExtractor.addDataUnitAccessUnit(dataUnitAccessUnit);
+            dataUnitsExtractor.addDataUnitAccessUnit(
+                    dataUnitAccessUnit
+            );
 
+        }
+    }
+
+    private static void addDataUnitsBlockHeadersNoMITUnmapped(
+            DataUnitsExtractor dataUnitsExtractor,
+            DatasetContainer datasetContainer
+    ) throws IOException {
+        for(AccessUnitContainer accessUnitContainer : datasetContainer.getAccessUnitContainers()){
+            if(accessUnitContainer.getAccessUnitHeader().getAUType() != DATA_CLASS.CLASS_U){
+                continue;
+            }
+
+            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+                    accessUnitContainer.getAccessUnitHeader()
+            );
+
+
+            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[accessUnitContainer.getBlocks().size()];
+
+            DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
+                    accessUnitContainer.getAccessUnitHeader().getParameterSetID()
+            );
+            EncodingParameters encodingParameters = new EncodingParameters();
+            ByteBuffer byteBuffer = parameterSet.getParameters();
+            byteBuffer.rewind();
+            encodingParameters.read(new MSBitBuffer(byteBuffer));
+
+            for(int i=0; i<blocks.length; i++){
+                Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
+
+                Payload allSubsequences = accessUnitBlock.getPayload();
+                allSubsequences.rewind();
+                long blockSize = allSubsequences.remaining();
+
+                Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                        DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
+                        encodingParameters,
+                        header.getAU_type(),
+                        allSubsequences,
+                        blockSize);
+
+                blocks[i] = new DataUnitAccessUnit.Block(
+                        DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
+                        subsequences);
+            }
+            DataUnitAccessUnit dataUnitAccessUnit = new DataUnitAccessUnit(
+                    header,
+                    dataUnitsExtractor.getDataUnits(),
+                    blocks
+            );
+            dataUnitsExtractor.addDataUnitAccessUnit(
+                    dataUnitAccessUnit
+            );
+
+        }
+    }
+
+    private static void addDataUnitsBlockHeadersMITUnmapped(
+            DataUnitsExtractor dataUnitsExtractor,
+            DatasetContainer datasetContainer
+    ) throws IOException {
+        long numberUAccessUnits = datasetContainer.getDatasetHeader().getNumberUAccessUnits();
+        for(int uAccessUnit_i = 0; uAccessUnit_i < numberUAccessUnits; uAccessUnit_i++) {
+            AccessUnitContainer accessUnitContainer = datasetContainer.getUnalignedAccessUnitContainer(uAccessUnit_i);
+
+            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+                    uAccessUnit_i,
+                    accessUnitContainer.getAccessUnitHeader().getNumberOfBlocks(),
+                    accessUnitContainer.getAccessUnitHeader().getParameterSetID(),
+                    accessUnitContainer.getAccessUnitHeader().getAUType(),
+                    accessUnitContainer.getAccessUnitHeader().getReadsCount(),
+                    accessUnitContainer.getAccessUnitHeader().getMmThreshold(),
+                    accessUnitContainer.getAccessUnitHeader().getMmCount(),
+                    accessUnitContainer.getAccessUnitHeader().getReferenceSequenceID(),
+                    accessUnitContainer.getAccessUnitHeader().getRefStartPosition(),
+                    accessUnitContainer.getAccessUnitHeader().getRefEndPosition(),
+                    null,
+                    0,
+                    0,
+                    accessUnitContainer.getAccessUnitHeader().getExtendedAUStartPosition(),
+                    accessUnitContainer.getAccessUnitHeader().getExtendedAUEndPosition()
+            );
+
+
+            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[accessUnitContainer.getBlocks().size()];
+
+            DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
+                    accessUnitContainer.getAccessUnitHeader().getParameterSetID()
+            );
+            EncodingParameters encodingParameters = new EncodingParameters();
+            ByteBuffer byteBuffer = parameterSet.getParameters();
+            byteBuffer.rewind();
+            encodingParameters.read(new MSBitBuffer(byteBuffer));
+
+            for(int i=0; i<blocks.length; i++){
+                Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
+
+                Payload allSubsequences = accessUnitBlock.getPayload();
+                allSubsequences.rewind();
+                long blockSize = allSubsequences.remaining();
+
+                Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                        DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
+                        encodingParameters,
+                        header.getAU_type(),
+                        allSubsequences,
+                        blockSize);
+
+                blocks[i] = new DataUnitAccessUnit.Block(
+                        DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
+                        subsequences
+                );
+            }
+            DataUnitAccessUnit dataUnitAccessUnit = new DataUnitAccessUnit(
+                    header,
+                    dataUnitsExtractor.getDataUnits(),
+                    blocks
+            );
+            dataUnitsExtractor.addDataUnitAccessUnit(
+                    dataUnitAccessUnit
+            );
         }
     }
 
@@ -438,7 +706,9 @@ public class DatasetToDataUnits {
                         dataUnitsExtractor.getDataUnits(),
                         blocks
                 );
-                dataUnitsExtractor.addDataUnitAccessUnit(dataUnitAccessUnit);
+                dataUnitsExtractor.addDataUnitAccessUnit(
+                        dataUnitAccessUnit
+                );
             }
         }
     }

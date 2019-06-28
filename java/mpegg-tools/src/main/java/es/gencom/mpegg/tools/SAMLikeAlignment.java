@@ -66,24 +66,24 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
     }
 
     static void mergeOperations(
-            Operation[][] operations,
+            byte[][] operations,
             int[][] operationLengths,
-            Operation[][] operationsMerged,
+            byte[][] operationsMerged,
             int[][] operationLengthsMerged,
             int splice_i
 
     ){
-        Operation[] operationsInSplice = operations[splice_i];
+        byte[] operationsInSplice = operations[splice_i];
         int[] operationLengthInSplice = operationLengths[splice_i];
 
-        Operation[] operationsInSpliceMerged = new Operation[operations[splice_i].length];
+        byte[] operationsInSpliceMerged = new byte[operations[splice_i].length];
         int[] operationLengthInSpliceMerged = new int[operationLengths[splice_i].length];
 
-        Operation currentOperation = operationsInSplice[0];
+        byte currentOperation = operationsInSplice[0];
         int currentLength = operationLengthInSplice[0];
         int numberMergedOperations = 0;
         for(int operation_i=1; operation_i < operationLengthInSplice.length; operation_i++){
-            Operation newOperation  = operationsInSplice[operation_i];
+            final byte newOperation  = operationsInSplice[operation_i];
             if(newOperation == currentOperation){
                 currentLength += operationLengthInSplice[operation_i];
             }else{
@@ -104,7 +104,7 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
         operationLengthsMerged[splice_i] = operationLengthInSpliceMerged;
     }
 
-    static String getCigarString(Operation[][] operationsMerged, int[][] operationLengthsMerged) {
+    static String getCigarString(byte[][] operationsMerged, int[][] operationLengthsMerged) {
         if(operationLengthsMerged.length == 0){
             throw new InternalError();
         } else if(operationLengthsMerged.length > 1){
@@ -114,34 +114,34 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
         StringBuilder stringBuilder = new StringBuilder();
         int currentLength = 0;
         for(int operation_i = 0; operation_i < operationsMerged[0].length; operation_i++){
-            switch (operationsMerged[0][operation_i]){
-                case SubstitutionToN:
-                case Substitution:
-                case Match:
+            switch (operationsMerged[0][operation_i]) {
+                case Operation.SubstitutionToN:
+                case Operation.Substitution:
+                case Operation.Match:
                     currentLength += operationLengthsMerged[0][operation_i];
                     break;
-                case Delete:
+                case Operation.Delete:
                     if(currentLength != 0){
                         stringBuilder.append(currentLength).append('M');
                     }
                     currentLength = 0;
                     stringBuilder.append(operationLengthsMerged[0][operation_i]).append('D');
                     break;
-                case Insert:
+                case Operation.Insert:
                     if(currentLength != 0){
                         stringBuilder.append(currentLength).append('M');
                     }
                     currentLength = 0;
                     stringBuilder.append(operationLengthsMerged[0][operation_i]).append('I');
                     break;
-                case SoftClip:
+                case Operation.SoftClip:
                     if(currentLength != 0){
                         stringBuilder.append(currentLength).append('M');
                     }
                     currentLength = 0;
                     stringBuilder.append(operationLengthsMerged[0][operation_i]).append('S');
                     break;
-                case HardClip:
+                case Operation.HardClip:
                     if(currentLength != 0){
                         stringBuilder.append(currentLength).append('M');
                     }
@@ -156,7 +156,7 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
         return stringBuilder.toString();
     }
 
-    public static String getMDTag(Operation[][] operations, int[][] operationsLength, byte[][] originalNucleotides) {
+    public static String getMDTag(byte[][] operations, int[][] operationsLength, byte[][] originalNucleotides) {
         if(operations.length == 0){
             throw new InternalError();
         } else if(operations.length > 1){
@@ -168,11 +168,11 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
         int currentLength = 0;
         for(int operation_i = 0; operation_i < operations[0].length; operation_i++){
             switch (operations[0][operation_i]){
-                case SoftClip:
-                case HardClip:
-                case Insert:
+                case Operation.SoftClip:
+                case Operation.HardClip:
+                case Operation.Insert:
                     break;
-                case Delete:
+                case Operation.Delete:
                     stringBuilder.append(currentLength);
                     stringBuilder.append('^');
                     for(int deleted_base_i=0; deleted_base_i < operationsLength[0][operation_i]; deleted_base_i++){
@@ -181,16 +181,14 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
                     }
                     currentLength = 0;
                     break;
-                case Match:
+                case Operation.Match:
                     currentLength += operationsLength[0][operation_i];
                     break;
-                case Substitution:
-                case SubstitutionToN:
-                    for(
-                            int subsituted_base_i = 0;
+                case Operation.Substitution:
+                case Operation.SubstitutionToN:
+                    for(int subsituted_base_i = 0;
                             subsituted_base_i < operationsLength[0][operation_i];
-                            subsituted_base_i++
-                    ) {
+                            subsituted_base_i++) {
                         stringBuilder.append(currentLength);
                         stringBuilder.append((char) originalNucleotides[0][originalNucleotide_i]);
                         currentLength = 0;

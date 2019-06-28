@@ -1,5 +1,17 @@
 package es.gencom.mpegg.tools;
 
+import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.format.*;
+import es.gencom.mpegg.format.ref.Reference;
+import es.gencom.mpegg.io.MPEGWriter;
+import es.gencom.mpegg.io.ReadableMSBitFileChannel;
+import es.gencom.mpegg.io.WritableMSBitChannel;
+import es.gencom.mpegg.tools.DataUnitsToFile.AbstractDataUnitsToDataset;
+import es.gencom.mpegg.tools.DataUnitsToFile.DataUnitsToAUCNoMITDataset;
+import es.gencom.mpegg.tools.DataUnitsToFile.FASTAToFASTAReference;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -36,20 +48,8 @@ public class MPEGG {
         }
         
         final String file = input.get(0);
-        
-        List<String> reference = params.get("-r");
-        if (reference == null) {
-            reference = params.get("--reference");
-        }
-        
-        if (reference == null || reference.isEmpty()) {
-            System.out.println(HELP);
-            System.exit(0);
-        }
-        
-        final String rawReference = reference.get(0);
-        
-        final String sequenceNamesFileName = input.get(1);
+
+
 
         Path path = Paths.get(file);
         boolean isBam  = path.getFileName().toString().endsWith(".bam");
@@ -62,23 +62,86 @@ public class MPEGG {
         }
 
         try {
-            String[] sequenceNames = SequenceNamesParser.getSequenceNames(Paths.get(sequenceNamesFileName));
-
             if (isBam) {
+                List<String> reference = params.get("-r");
+                if (reference == null) {
+                    reference = params.get("--reference");
+                }
+
+                if (reference == null || reference.isEmpty()) {
+                    System.out.println(HELP);
+                    System.exit(0);
+                }
+
+                final String fastaReferencePath = reference.get(0);
+                final String mpeggPath = file.replace("bam", "mpegg");
+
+                final String bitStreamPath = file.replace("bam","mgb");
+
                 BAMToMPEGGBytestream.encode(
                         file,
-                        rawReference,
-                        file.replace("bam", "mpegg"),
-                        sequenceNames,
+                        fastaReferencePath,
+                        bitStreamPath,
                         false
                 );
+                DataUnits dataUnits = DataUnits.read(new ReadableMSBitFileChannel(
+                        new FileInputStream(bitStreamPath).getChannel())
+                );
+
                 System.out.println("num discarded records: "+BAMToMPEGGBytestream.getNumDiscardedRecords());
+
+                MPEGFile mpegFile = new MPEGFile();
+                MPEGFileHeader fileHeader = new MPEGFileHeader();
+                fileHeader.addCompatibleBrand(new String(new byte[4]));
+                mpegFile.setFileHeader(fileHeader);
+
+                DatasetGroupContainer datasetGroupContainer = new DatasetGroupContainer();
+                mpegFile.addDatasetGroupContainer(datasetGroupContainer);
+
+                datasetGroupContainer.setDatasetGroupHeader(
+                        new DatasetGroupHeader()
+                );
+
+                Reference formatReference = FASTAToFASTAReference.generate(
+                        datasetGroupContainer,
+                        Paths.get(fastaReferencePath),
+                        "hs37d5",
+                        (short)0,
+                        (short)0,
+                        (short)0,
+                        "hs37d5.fa",
+                        ChecksumAlgorithm.SHA256
+                );
+                AbstractDataUnitsToDataset dataUnitsToDataset = new DataUnitsToAUCNoMITDataset();
+                dataUnitsToDataset.addAsDataset(
+                        datasetGroupContainer,
+                        (byte)0,
+                        dataUnits,
+                        false,
+                        formatReference.getReferenceId(),
+                        100000,
+                        Alphabet.DNA_IUPAC
+                );
+
+                MPEGWriter writer = new WritableMSBitChannel(new FileOutputStream(mpeggPath).getChannel());
+                mpegFile.write(writer);
+                writer.flush();
             } else {
+                MPEGFile mpegFile = new MPEGFile();
+                mpegFile.read(new ReadableMSBitFileChannel(new FileInputStream(file).getChannel()));
+
+                DatasetGroupContainer datasetGroupContainer = mpegFile.getDatasetGroupContainer(0);
+                DatasetContainer datasetContainer = datasetGroupContainer.getDatasetContainerById(0);
+
+                DataUnits dataUnits = DatasetToDataUnits.getDataUnits(datasetGroupContainer, datasetContainer);
+                Reference reference = datasetGroupContainer.getReference(
+                        datasetContainer.getDatasetHeader().getReferenceId()
+                );
+
                 MPEGGBytestreamToBAM.decode(
-                        file,
-                        rawReference,
+                        dataUnits,
                         file.replace("mpegg", "mpegg_bam"),
-                        sequenceNames
+                        reference.getSequenceNames()
                 );
             }
         }catch (Exception e){

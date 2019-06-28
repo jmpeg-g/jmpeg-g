@@ -25,7 +25,7 @@
 
 package es.gencom.mpegg.coder.tokens;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_TokentypeDecoderConfiguration;
+import es.gencom.mpegg.coder.compression.COMPRESSION_METHOD_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.TokentypeDecoderConfiguration;
 import es.gencom.mpegg.io.MPEGReader;
@@ -47,50 +47,41 @@ public class SubTokenX4Decoder implements SubTokenSequenceDecoder{
             throw new IllegalArgumentException();
         }
 
-        if(! (decoderConfiguration instanceof CABAC_TokentypeDecoderConfiguration)){
-            throw new IllegalArgumentException();
-        }
-        CABAC_TokentypeDecoderConfiguration cabacTokentypeDecoderConfiguration =
-                (CABAC_TokentypeDecoderConfiguration)decoderConfiguration;
-
         values = new short[4][Math.toIntExact(numOutputSymbols)/4];
 
-        for(int i=0; i<4; i++){
-            byte type = (byte) reader.readBits(4);
-            SubTokenDecoderType decoderType = SubTokenDecoderType.getTokenType(type);
+        for(int i = 0; i < 4; i++) {
+            COMPRESSION_METHOD_ID decoderType = COMPRESSION_METHOD_ID.read(reader);
 
             SubTokenSequenceDecoder sequenceDecoder;
 
             switch (decoderType){
                 case CAT:
-                    sequenceDecoder = new SubTokenCATDecoder(reader, numOutputSymbols/4);
+                    sequenceDecoder = new SubTokenCATDecoder(reader, numOutputSymbols / 4);
                     break;
                 case RLE:
                     sequenceDecoder = new SubTokenRLEDecoder(
-                            cabacTokentypeDecoderConfiguration.rle_guard_tokentype,
-                            reader,
-                            numOutputSymbols/4);
+                            decoderConfiguration.getTokentypeDecoder(
+                                    reader, descriptor_id, decoderType, numOutputSymbols / 4));
                     break;
-                case CABAC_METHOD_0:
+                case CABAC_ORDER_0:
                     sequenceDecoder = new SubTokenCABACMethod0Decoder(
                             reader,
                             descriptor_id,
-                            cabacTokentypeDecoderConfiguration,
+                            decoderConfiguration,
                             Math.toIntExact(numOutputSymbols / 4));
                     break;
-                case CABAC_METHOD_1:
+                case CABAC_ORDER_1:
                     sequenceDecoder = new SubTokenCABACMethod1Decoder(
                             reader,
                             descriptor_id,
-                            cabacTokentypeDecoderConfiguration,
-                            Math.toIntExact(numOutputSymbols / 4)
-                    );
+                            decoderConfiguration,
+                            Math.toIntExact(numOutputSymbols / 4));
                     break;
                 default:
                     throw new IllegalArgumentException();
             }
 
-            for(int j=0; j<numOutputSymbols/4; j++){
+            for(int j = 0; j < numOutputSymbols / 4; j++){
                 values[i][j] = sequenceDecoder.getSubTokenUnsignedByte();
             }
         }
@@ -99,7 +90,7 @@ public class SubTokenX4Decoder implements SubTokenSequenceDecoder{
 
     @Override
     public boolean hasNext() {
-        if(currentSubsequence < 4){
+        if(currentSubsequence < 4) {
             return true;
         }
         return (currentIndex + 1) < values.length;
@@ -107,7 +98,7 @@ public class SubTokenX4Decoder implements SubTokenSequenceDecoder{
 
     @Override
     public short getSubTokenUnsignedByte() throws IOException {
-        if(currentSubsequence == 4){
+        if(currentSubsequence == 4) {
             currentSubsequence = 0;
             currentIndex++;
         }

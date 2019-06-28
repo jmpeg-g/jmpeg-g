@@ -327,12 +327,12 @@ public class RecordConstructor {
             }
         }
 
-        Operation[][][][] operationType = new Operation[2][][][];
+        byte[][][][] operationType = new byte[2][][][];
         int[][][][] operationLength = new int[2][][][];
         byte[][][][] originalBase = new byte[2][][][];
 
         for(int segment_i=0; segment_i<(requiresTwoSegments ? 2:1); segment_i++){
-            operationType[segment_i] = new Operation[sequenceInformation[segment_i].length][][];
+            operationType[segment_i] = new byte[sequenceInformation[segment_i].length][][];
             operationLength[segment_i] = new int[sequenceInformation[segment_i].length][][];
             originalBase[segment_i] = new byte[sequenceInformation[segment_i].length][][];
 
@@ -440,8 +440,7 @@ public class RecordConstructor {
                 lengthSplices,
                 operationType,
                 operationLength,
-                originalBase
-        );
+                originalBase);
 
         return new Record(
                 readId,
@@ -473,7 +472,7 @@ public class RecordConstructor {
             boolean[][][] reverseCompInformation,
             BAMRecord[][] bamRecordsInformation,
             long[][][] lengthSplices,
-            Operation[][][][] operationType,
+            byte[][][][] operationType,
             int[][][][] operationLength,
             byte[][][][] originalBase
     ) {
@@ -490,7 +489,7 @@ public class RecordConstructor {
         boolean[][] reverseCompInformationBuffer = new boolean[countSegment0InRecord][];
         BAMRecord[] bamRecordsInformationBuffer = new BAMRecord[countSegment0InRecord];
         long[][] lengthSplicesBuffer = new long[countSegment0InRecord][];
-        Operation[][][] operationTypeBuffer = new Operation[countSegment0InRecord][][];
+        byte[][][] operationTypeBuffer = new byte[countSegment0InRecord][][];
         int[][][] operationLengthBuffer = new int[countSegment0InRecord][][];
         byte[][][] originalBaseBuffer = new byte[countSegment0InRecord][][];
 
@@ -587,7 +586,7 @@ public class RecordConstructor {
     private static DATA_CLASS populateCigar(
             BAMRecord bamRecord,
             AbstractSequencesSource sequencesSource,
-            Operation[][][] operations,
+            byte[][][] operations,
             int[][][] operationLength,
             byte[][][] originalBases,
             int alignment_i,
@@ -615,7 +614,7 @@ public class RecordConstructor {
                 bamRecord.getPositionStart() + toCopy
         );
 
-        operations[alignment_i] = new Operation[1][128];
+        operations[alignment_i] = new byte[1][128];
         operationLength[alignment_i] = new int[1][128];
         originalBases[alignment_i] = new byte[1][128];
 
@@ -653,7 +652,7 @@ public class RecordConstructor {
                             );
                         }
                     }else{
-                        Operation operationType;
+                        byte operationType;
                         if(bamRecord.getSequenceBytes()[currentPositionInReadString] == 'N'){
                             operationType = Operation.SubstitutionToN;
 

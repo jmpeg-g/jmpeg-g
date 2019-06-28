@@ -25,7 +25,6 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
@@ -33,6 +32,7 @@ import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.decoder.descriptors.S_alphabets;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -57,18 +57,16 @@ public class ClipsStream {
             final DATA_CLASS dataClass,
             final EncodingParameters encodingParameters) {
 
-        CABAC_DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
-                DESCRIPTOR_ID.CLIPS,
-                dataClass
-        );
+        DescriptorDecoderConfiguration conf = 
+                encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.CLIPS, dataClass);
 
         this.dataClass = dataClass;
         this.alphabet_id = encodingParameters.getAlphabetId();
 
-        if(block == null){
+        if(block == null) {
             sub_streams = null;
             decoders = null;
-        }else {
+        } else {
             sub_streams = block.getPayloads();
             decoders = new DescriptorDecoder[sub_streams.length];
             for(int substream_index=0; substream_index < sub_streams.length; substream_index++) {

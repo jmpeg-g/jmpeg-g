@@ -25,9 +25,6 @@
 
 package es.gencom.mpegg.coder.compression;
 
-import es.gencom.mpegg.io.MPEGWriter;
-import java.io.IOException;
-
 /**
  * <p>
  * An abstract Decoder Configuration (12.3) class to be extended by any particular 
@@ -46,12 +43,4 @@ public abstract class AbstractDecoderConfiguration implements DecoderConfigurati
         
         this.encoding_mode_id = encoding_mode_id;
     }
-    
-    /**
-     * Write the decoder_configuration_type into the MPEG stream
-     * 
-     * @param writer
-     * @throws IOException 
-     */
-    public abstract void write(MPEGWriter writer) throws IOException;
 }

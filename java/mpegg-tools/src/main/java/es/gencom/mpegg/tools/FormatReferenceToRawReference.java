@@ -12,10 +12,12 @@ import es.gencom.mpegg.io.MPEGReader;
 import es.gencom.mpegg.io.Payload;
 import es.gencom.mpegg.io.ReadableMSBitFileChannel;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Set;
 
 public class FormatReferenceToRawReference {
     public static DataUnitRawReference convert(Reference reference) throws IOException {
@@ -24,9 +26,9 @@ public class FormatReferenceToRawReference {
             throw new IllegalArgumentException();
         } else {
             ExternalLocation externalLocation = (ExternalLocation) reference.getLocation();
-            if (externalLocation.getReference_type() == REFERENCE_TYPE.MPEGG_REF) {
+            if (externalLocation.getReferenceType() == REFERENCE_TYPE.MPEGG_REF) {
                 throw new IllegalArgumentException();
-            } else if (externalLocation.getReference_type() == REFERENCE_TYPE.RAW_REF) {
+            } else if (externalLocation.getReferenceType() == REFERENCE_TYPE.RAW_REF) {
 
                 MPEGReader readerOriginal = new ReadableMSBitFileChannel(
                         FileChannel.open(Paths.get(externalLocation.getRef_uri()))
@@ -37,7 +39,14 @@ public class FormatReferenceToRawReference {
                 );
 
             } else {
-                rawReference = FASTAToRawReference(reference);
+                String URI = externalLocation.getRef_uri().replace("fa","rawReference");
+                File file = Paths.get(URI).toFile();
+                if(file.exists()){
+                    MPEGReader reader = new ReadableMSBitFileChannel(FileChannel.open(file.toPath()));
+                    rawReference = DataUnitRawReference.read(reader, null);
+                }else {
+                    rawReference = FASTAToRawReference(reference);
+                }
             }
         }
         return rawReference;
@@ -46,8 +55,14 @@ public class FormatReferenceToRawReference {
     public static DataUnitRawReference FASTAToRawReference(
             Reference reference
     ) throws IOException {
+        return FASTAToRawReference(((ExternalLocation) reference.getLocation()).getRef_uri());
+    }
+
+    public static DataUnitRawReference FASTAToRawReference(
+            String fastaPath
+    ) throws IOException {
         FastaFileReader fastaReader = new FastaFileReader(
-                Paths.get(((ExternalLocation) reference.getLocation()).getRef_uri())
+                Paths.get(fastaPath)
         );
 
         int[] sequence_ids = new int[23];

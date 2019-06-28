@@ -52,17 +52,19 @@ public class DataUnitsExtractor {
     }
 
     public DataUnits constructDataUnits() throws IOException {
-        DataUnitRawReference rawReference = FormatReferenceToRawReference.convert(reference);
+        if(reference != null) {
+            DataUnitRawReference rawReference = FormatReferenceToRawReference.convert(reference);
 
-        int[] requiredSequencesCasted = new int[requiredSequences.size()];
-        int required_i = 0;
-        for(SequenceIdentifier value : requiredSequences){
-            requiredSequencesCasted[required_i] = value.getSequenceIdentifier();
-            required_i++;
+            int[] requiredSequencesCasted = new int[requiredSequences.size()];
+            int required_i = 0;
+            for (SequenceIdentifier value : requiredSequences) {
+                requiredSequencesCasted[required_i] = value.getSequenceIdentifier();
+                required_i++;
+            }
+
+            rawReference = rawReference.selectSubset(requiredSequencesCasted);
+            dataUnits.setDataUnitRawReference(rawReference);
         }
-
-        rawReference = rawReference.selectSubset(requiredSequencesCasted);
-        dataUnits.setDataUnitRawReference(rawReference);
         for(Map.Entry<Short, DataUnitParameters> parametersEntry : parametersMap.entrySet()){
             addParameter(parametersEntry.getValue());
         }

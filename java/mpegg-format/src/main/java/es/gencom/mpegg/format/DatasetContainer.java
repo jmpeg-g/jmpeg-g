@@ -53,9 +53,10 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
     private DatasetMetadata datasetMetadata;
     private DatasetProtection datasetProtection;
     private BidirectionalMap<AccessUnitContainer, AU_Id_triplet> accessUnitContainerToAuIdTriplet;
+    private AccessUnitContainer[] unalignedAccessUnitContainer;
     private BidirectionalMap<DescriptorStreamIdDuplet, DescriptorStreamContainer> descriptorStreamIdDupletToContainer;
     private TreeSet<Long> accessUnitContainerOffsets;
-    private TreeSet<OffsetToAccessUnit> offsetToAccessUnits;
+    private BidirectionalMap<Long, AccessUnitContainer> offsetToAccessUnits;
 
     public DatasetContainer() {
         super(KEY);
@@ -66,7 +67,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
         datasetMetadata = null;
         datasetProtection = null;
         dataset_header = new DatasetHeader();
-        offsetToAccessUnits = new TreeSet<>();
+        offsetToAccessUnits = new BidirectionalMap<>();
     }
 
     public DatasetHeader getDatasetHeader() {
@@ -105,6 +106,10 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
 
     public void addAccessUnit(final AccessUnitContainer accessUnitContainer) {
         accessUnitContainers.add(accessUnitContainer);
+    }
+
+    public long getOffsetOfAccessUnitContainer(AccessUnitContainer accessUnitContainer) {
+        return offsetToAccessUnits.getReverse(accessUnitContainer);
     }
 
     private static class DescriptorStreamIdDuplet {
@@ -207,6 +212,8 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
 
         dataset_header = new DatasetHeader().read(reader, header.getContentSize());
 
+        unalignedAccessUnitContainer = new AccessUnitContainer[(int)dataset_header.getNumberUAccessUnits()];
+
         if(!dataset_header.isBlockHeader()) {
             descriptorStreamContainers = new ArrayList<>(DATA_CLASS.values().length);
             for (DATA_CLASS dataClass : DATA_CLASS.values()) {
@@ -245,24 +252,30 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
             accessUnitContainer.setAccessUnitOffset(auContainerOffset);
             accessUnitContainerOffsets.add(auContainerOffset);
 
-            offsetToAccessUnits.add(new OffsetToAccessUnit(auContainerOffset, accessUnitContainer));
+            offsetToAccessUnits.put(auContainerOffset, accessUnitContainer);
             accessUnitContainers.add(accessUnitContainer);
 
-            AU_Id_triplet auIdTriplet = null;
-            try {
-                if(masterIndexTable != null) {
-                    auIdTriplet = masterIndexTable
-                            .getAuIdTriplet(
-                                    accessUnitContainer.getAccessUnitHeader(),
-                                    readerPosition - 12
-                            );
+            if(accessUnitContainer.getAccessUnitHeader().getAUType() != DATA_CLASS.CLASS_U) {
+                AU_Id_triplet auIdTriplet = null;
+                try {
+                    if (masterIndexTable != null) {
+                        auIdTriplet = masterIndexTable
+                                .getAuIdTriplet(
+                                        accessUnitContainer.getAccessUnitHeader(),
+                                        readerPosition - 12
+                                );
+                    }
+                } catch (DataClassNotFoundException e) {
+                    throw new InvalidMPEGGFileException("Data class not found.", e);
                 }
-            }catch (DataClassNotFoundException e){
-                throw new InvalidMPEGGFileException("Data class not found.", e);
-            }
 
-            if(auIdTriplet != null){
-                accessUnitContainerToAuIdTriplet.put(accessUnitContainer, auIdTriplet);
+                if (auIdTriplet != null) {
+                    accessUnitContainerToAuIdTriplet.put(accessUnitContainer, auIdTriplet);
+                }
+            } else {
+                unalignedAccessUnitContainer[
+                        accessUnitContainer.getAccessUnitHeader().getAccessUnitID()
+                ] = accessUnitContainer;
             }
 
             readerPosition = reader.getPosition();
@@ -525,11 +538,11 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
         return accessUnitContainerOffsets.last();
     }
 
-    public SortedSet<OffsetToAccessUnit> getOffsetToAccessUnits(){
-        return offsetToAccessUnits;
-    }
-
     public BidirectionalMap<AccessUnitContainer, AU_Id_triplet> getAccessUnitContainerToAuIdTriplet() {
         return accessUnitContainerToAuIdTriplet;
+    }
+
+    public AccessUnitContainer getUnalignedAccessUnitContainer(int index){
+        return unalignedAccessUnitContainer[index];
     }
 }

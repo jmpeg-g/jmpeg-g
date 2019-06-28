@@ -25,7 +25,6 @@
 
 package es.gencom.mpegg;
 
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation;
 import es.gencom.mpegg.format.SequenceIdentifier;
 
 import java.util.Arrays;
@@ -40,17 +39,18 @@ public class RecordFactory {
             short[][] qualityValues,
             SequenceIdentifier sequenceId,
             long[][] mappingPositionsSegment,
-            Operation[][][] operationType,
+            byte[][][] operationType,
             int[][][] operationLength,
             byte[][][] originalBase,
             long[][] spliceLengths,
             boolean[][] reverseCompliment,
-            long[][] mapping_score
-    ){
+            long[][] mapping_score) {
+
         int[][] alingPtr = new int[mappingPositionsSegment.length][1];
         for(int i=0; i<mappingPositionsSegment.length; i++){
             alingPtr[i][0] = i;
         }
+
         return new Record(
             readId,
             readName,
@@ -65,7 +65,7 @@ public class RecordFactory {
             null,
             null,
             new long[][][]{spliceLengths},
-            new Operation[][][][]{operationType},
+            new byte[][][][]{operationType},
             new int[][][][]{operationLength},
             new byte[][][][]{originalBase},
             new boolean[][][]{reverseCompliment},
@@ -84,14 +84,14 @@ public class RecordFactory {
             SequenceIdentifier sequenceId,
             long[][] mappingPositionsSegment0,
             long[] mappingPositionsSegment1,
-            Operation[][][] operationType,
+            byte[][][] operationType,
             int[][][] operationLength,
             byte[][][] originalBase,
             long[][][] spliceLengths,
             boolean[][] reverseCompliment,
             long[][] mapping_score,
-            int[][] alignPtr
-    ){
+            int[][] alignPtr) {
+
         SequenceIdentifier[] sequencesSegment1 = new SequenceIdentifier[mappingPositionsSegment1.length];
         Arrays.fill(sequencesSegment1, sequenceId);
         SplitType[] splitMate = new SplitType[mappingPositionsSegment1.length];
@@ -115,8 +115,7 @@ public class RecordFactory {
                 spliceLengths,
                 reverseCompliment,
                 mapping_score,
-                alignPtr
-        );
+                alignPtr);
     }
 
     public static Record createTwoAlignedSecondOtherRecordOtherSequence(
@@ -130,14 +129,14 @@ public class RecordFactory {
             long[][] mappingPositionsSegment0,
             SequenceIdentifier[] sequencesSegment1,
             long[] mappingPositionsSegment1,
-            Operation[][][] operationType,
+            byte[][][] operationType,
             int[][][] operationLength,
             byte[][][] originalBase,
             long[][][] spliceLengths,
             boolean[][] reverseCompliment,
             long[][] mapping_score,
-            int[][] alignPtr
-    ){
+            int[][] alignPtr) {
+
         SplitType[] splitTypes = new SplitType[mappingPositionsSegment1.length];
         Arrays.fill(splitTypes, SplitType.DifferentRecord);
 
@@ -159,8 +158,7 @@ public class RecordFactory {
                 spliceLengths,
                 reverseCompliment,
                 mapping_score,
-                alignPtr
-        );
+                alignPtr);
     }
 
     private static Record createTwoAlignedSecondOtherRecord(
@@ -175,14 +173,14 @@ public class RecordFactory {
             SplitType[] splitTypes,
             SequenceIdentifier[] sequencesSegment1,
             long[] mappingPositionsSegment1,
-            Operation[][][] operationType,
+            byte[][][] operationType,
             int[][][] operationLength,
             byte[][][] originalBase,
             long[][][] spliceLengths,
             boolean[][] reverseCompliment,
             long[][] mapping_score,
-            int[][] alignPtr
-    ){
+            int[][] alignPtr) {
+
         long[][] mappingPositionSegment1Restructured = new long[mappingPositionsSegment1.length][1];
         for(
                 int mappingPositionSeg1_i=0;
@@ -193,7 +191,7 @@ public class RecordFactory {
                     mappingPositionsSegment1[mappingPositionSeg1_i];
         }
 
-        Operation[][][][] operationTypeResized = new Operation[][][][]{operationType};
+        byte[][][][] operationTypeResized = new byte[][][][]{operationType};
         int[][][][] operationLengthResized = new int[][][][]{operationLength};
         byte[][][][] originalBaseResized = new byte[][][][]{originalBase};
         boolean[][][] reverseComplimentResized = new boolean[][][]{reverseCompliment};
@@ -233,17 +231,16 @@ public class RecordFactory {
             short[][] qualityValues,
             SequenceIdentifier sequenceId,
             long[][] mappingPositionsSegment0,
-            Operation[][][] operationType,
+            byte[][][] operationType,
             int[][][] operationLength,
             byte[][][] originalBase,
             long[][][] spliceLengths,
             boolean[][] reverseCompliment,
             long[][] mapping_score,
             int uAu_id,
-            long uRecord_id
-    ){
+            long uRecord_id) {
 
-        Operation[][][][] operationTypeResized = new Operation[][][][]{operationType};
+        byte[][][][] operationTypeResized = new byte[][][][]{operationType};
         int[][][][] operationLengthResized = new int[][][][]{operationLength};
         byte[][][][] originalBaseResized = new byte[][][][]{originalBase};
         boolean[][][] reverseComplimentResized = new boolean[][][]{reverseCompliment};
@@ -269,8 +266,7 @@ public class RecordFactory {
                 originalBaseResized,
                 reverseComplimentResized,
                 mapping_scoreResized,
-                null
-        );
+                null);
     }
 
     public static Record createTwoAligned(
@@ -283,14 +279,13 @@ public class RecordFactory {
             SequenceIdentifier sequenceId,
             long[][] mappingPositionsSegment0,
             long[][] mappingPositionsSegment1,
-            Operation[][][][] operationType,
+            byte[][][][] operationType,
             int[][][][] operationLength,
             byte[][][][] originalBase,
             long[][][] spliceLength,
             boolean[][][] reverseCompliment,
             long[][][] mapping_score,
-            int[][] alignPtr
-    ){
+            int[][] alignPtr) {
 
         SequenceIdentifier[] sequencesSegment1 = new SequenceIdentifier[mappingPositionsSegment1.length];
         Arrays.fill(sequencesSegment1, sequenceId);
@@ -316,8 +311,7 @@ public class RecordFactory {
                 originalBase,
                 reverseCompliment,
                 mapping_score,
-                alignPtr
-        );
+                alignPtr);
     }
 
     public static Record createOneAlignedOneUnmapped(
@@ -329,14 +323,14 @@ public class RecordFactory {
             short[][][] qualityValues,
             SequenceIdentifier sequenceId,
             long[][] mappingPositionsSegment0,
-            Operation[][][] operationType,
+            byte[][][] operationType,
             int[][][] operationLength,
             byte[][][] originalBase,
             long[][][] spliceLength,
             boolean[][] reverseCompliment,
-            long[][] mapping_score
-    ){
-        Operation[][][][] operationTypeResized = new Operation[][][][]{operationType};
+            long[][] mapping_score) {
+
+        byte[][][][] operationTypeResized = new byte[][][][]{operationType};
         int[][][][] operationLengthResized = new int[][][][]{operationLength};
         byte[][][][] originalBaseResized = new byte[][][][]{originalBase};
         boolean[][][] reverseComplimentResized = new boolean[][][]{reverseCompliment};
@@ -362,7 +356,6 @@ public class RecordFactory {
                 originalBaseResized,
                 reverseComplimentResized,
                 mapping_scoreResized,
-                new int[][]{{0,0}}
-        );
+                new int[][]{{0,0}});
     }
 }

@@ -25,12 +25,12 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -49,12 +49,11 @@ public class MMposStream {
             EncodingParameters encodingParameters) {
 
         this.dataClass = dataClass;
-        CABAC_DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
-                DESCRIPTOR_ID.MMPOS,
-                dataClass
-        );
+        
+        DescriptorDecoderConfiguration conf = 
+                encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.MMPOS, dataClass);
 
-        if(block == null){
+        if(block == null) {
             decoders = null;
             return;
         }

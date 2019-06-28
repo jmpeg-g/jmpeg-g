@@ -27,11 +27,15 @@ package es.gencom.mpegg.CABAC.configuration;
 
 import es.gencom.mpegg.CABAC.configuration.subseq.CABAC_SubsequenceCoderConfiguration;
 import es.gencom.mpegg.CABAC.configuration.subseq.CABAC_SubsequenceConfiguration;
+import es.gencom.mpegg.CABAC.decoder.CABAC_TokentypeRleDecoder;
 import es.gencom.mpegg.CABAC.decoder.CABAC_TokentypeDecoder;
 import es.gencom.mpegg.CABAC.encoder.CABAC_TokentypeEncoder;
+import es.gencom.mpegg.CABAC.encoder.CABAC_TokentypeRleEncoder;
 import es.gencom.mpegg.coder.compression.AbstractDecoderConfiguration;
 import es.gencom.mpegg.coder.compression.COMPRESSION_METHOD_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
+import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorEncoder;
 import es.gencom.mpegg.coder.compression.ENCODING_MODE_ID;
 import es.gencom.mpegg.coder.compression.TokentypeDecoderConfiguration;
 import es.gencom.mpegg.io.MPEGReader;
@@ -75,7 +79,7 @@ public class CABAC_TokentypeDecoderConfiguration
     }
     
     @Override
-    public CABAC_TokentypeDecoder getTokentypeDecoder(
+    public DescriptorDecoder getTokentypeDecoder(
             final MPEGReader reader, 
             final DESCRIPTOR_ID descriptor_id,
             final COMPRESSION_METHOD_ID compression_method_id,
@@ -85,6 +89,10 @@ public class CABAC_TokentypeDecoderConfiguration
         switch (compression_method_id) {
             case CABAC_ORDER_0: tokentype_config = tokentype_order0_config; break;
             case CABAC_ORDER_1: tokentype_config = tokentype_order1_config; break;
+            case RLE: return new CABAC_TokentypeRleDecoder(reader,
+                                                           descriptor_id,
+                                                           numOutputSymbols,
+                                                           rle_guard_tokentype);
 
             default: tokentype_config = null;
         }
@@ -97,7 +105,7 @@ public class CABAC_TokentypeDecoderConfiguration
     }
 
     @Override
-    public CABAC_TokentypeEncoder getTokentypeEncoder(
+    public DescriptorEncoder getTokentypeEncoder(
             final MPEGWriter writer, 
             final DESCRIPTOR_ID descriptor_id,
             final COMPRESSION_METHOD_ID compression_method_id) {
@@ -106,7 +114,9 @@ public class CABAC_TokentypeDecoderConfiguration
         switch (compression_method_id) {
             case CABAC_ORDER_0: tokentype_config = tokentype_order0_config; break;
             case CABAC_ORDER_1: tokentype_config = tokentype_order1_config; break;
-
+            case RLE: return new CABAC_TokentypeRleEncoder(writer,
+                                                           descriptor_id,
+                                                           rle_guard_tokentype);
             default: tokentype_config = null;
         }
         

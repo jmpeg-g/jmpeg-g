@@ -25,12 +25,12 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.decoder.descriptors.S_alphabets;
 import es.gencom.mpegg.io.Payload;
 
@@ -57,8 +57,8 @@ public class MMTypeStream implements MMTypeStreamInterface{
             final EncodingParameters encodingParameters) {
 
         this.dataClass = dataClass;
-        CABAC_DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
-                DESCRIPTOR_ID.MMTYPE, dataClass);
+        DescriptorDecoderConfiguration conf = 
+                encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.MMTYPE, dataClass);
         
         externalDataProvider = new ExternalDataInputStream();
 

@@ -25,13 +25,13 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.CABAC.configuration.CABAC_DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.decoder.GenomicPosition;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -57,10 +57,8 @@ public class PosStream {
             this.stream = block.getSubstream(0);
 
             //CABAC_DescriptorDecoderConfiguration conf = new CABAC_DescriptorDecoderConfiguration();
-            CABAC_DescriptorDecoderConfiguration conf = encodingParameters.getDecoderConfiguration(
-                    DESCRIPTOR_ID.POS,
-                    dataClass
-            );
+            DescriptorDecoderConfiguration conf = 
+                    encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.POS, dataClass);
 
             decoder = new DescriptorDecoder[block.getPayloads().length];
             for(int subsequence_i=0; subsequence_i < block.getPayloads().length; subsequence_i++) {
