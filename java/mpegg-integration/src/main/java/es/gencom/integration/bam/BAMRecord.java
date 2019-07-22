@@ -178,7 +178,7 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
         if (auxiliary == null) {
             auxiliary = data;
         } else {
-            Arrays.copyOf(auxiliary, auxiliary.length + data.length);
+            auxiliary = Arrays.copyOf(auxiliary, auxiliary.length + data.length);
             System.arraycopy(data, 0, auxiliary, auxiliary.length, data.length);
         }
         return (T)old_tag;
