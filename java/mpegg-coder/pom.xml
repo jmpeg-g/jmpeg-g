@@ -64,13 +64,13 @@
         <dependency>
             <groupId>es.gencom.mpegg</groupId>
             <artifactId>mpegg-format</artifactId>
-            <version>0.1</version>
+            <version>0.2</version>
         </dependency>
         
         <dependency>
             <groupId>es.gencom.mpegg</groupId>
             <artifactId>mpegg-cabac</artifactId>
-            <version>0.1</version>
+            <version>0.2</version>
         </dependency>
 
         <dependency>
