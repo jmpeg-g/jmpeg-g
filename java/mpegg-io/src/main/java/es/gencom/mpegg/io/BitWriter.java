@@ -32,6 +32,7 @@ import java.io.IOException;
  * <p>
  * Bit Writer interface with default implementation for basic Java types.
  * </p>
+ * 
  * @author Dmitry Repchevsky &amp; Daniel Naro
  */
 

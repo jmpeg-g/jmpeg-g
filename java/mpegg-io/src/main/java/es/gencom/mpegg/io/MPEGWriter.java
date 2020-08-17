@@ -94,4 +94,10 @@ public interface MPEGWriter extends BitWriter {
         }
         writeUnsignedByte(bytes[9]);
     }
+
+    default void writeUnsignedBytes(short[] shorts) throws IOException {
+        for(int val_i=0; val_i < shorts.length; val_i++){
+            writeUnsignedByte(shorts[val_i]);
+        }
+    }
 }

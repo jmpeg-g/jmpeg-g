@@ -1,14 +1,15 @@
 package es.gencom.mpegg.tools.DataUnitsToFile;
 
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
 import es.gencom.mpegg.format.signatures.Signature;
 import es.gencom.mpegg.io.MSBitOutputArray;
 import es.gencom.mpegg.io.Payload;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,9 +21,9 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
     private final boolean randomizedDescriptor;
 
 
-    private Map<SequenceIdentifier, Map<DATA_CLASS, Map<DESCRIPTOR_ID, Map<Long, DataUnitAccessUnit.Block>>>>
-            blockPerSequencePerClassPerDescriptorPerAU;
-    private Map<DESCRIPTOR_ID, Map<Long, DataUnitAccessUnit.Block>> blockPerDescriptorPerUnmappedAU;
+    private Map<DATA_CLASS, Map<DESCRIPTOR_ID, Map<SequenceIdentifier, Map<Long, AccessUnitBlock>>>>
+            blockPerClassPerDescriptorPerSequencePerAU;
+    private Map<DESCRIPTOR_ID, Map<Long, AccessUnitBlock>> blockPerDescriptorPerUnmappedAU;
 
     public DataUnitsToDSCDataset(){
         this(false);
@@ -31,7 +32,7 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
     /*Only to be used for debugging*/
     public DataUnitsToDSCDataset(boolean randomizedDescriptor){
         this.randomizedDescriptor = randomizedDescriptor;
-        blockPerSequencePerClassPerDescriptorPerAU = new TreeMap<>();
+        blockPerClassPerDescriptorPerSequencePerAU = new TreeMap<>();
         blockPerDescriptorPerUnmappedAU = new TreeMap<>();
     }
 
@@ -43,7 +44,7 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
             boolean use40BitsPositions,
             short referenceId,
             int default_threshold,
-            Alphabet alphabet) throws IOException, DataFormatException {
+            ALPHABET alphabet) throws IOException, DataFormatException {
 
         DatasetContainer datasetContainer = new DatasetContainer();
 
@@ -57,7 +58,7 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
         short reference_id = referenceId;
         Reference reference = datasetGroupContainer.getReference(reference_id);
         boolean CC_mode_flag = inferClassContiguousFlag(reference, dataUnits);
-        boolean ordered_blocks_flag = false;
+        boolean ordered_blocks_flag = !randomizedDescriptor;
         long[] seq_blocks = countBlocksPerSequence(reference, dataUnits);
         SequenceIdentifier[] seqId = createSequenceIdentifiers(reference, seq_blocks);
         seq_blocks = discardZeros(seq_blocks);
@@ -82,8 +83,8 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
             DatasetParameterSet datasetParameterSet = new DatasetParameterSet(
                     datasetGroupContainer.getDatasetGroupHeader().getDatasetGroupId(),
                     (short)datasetContainer.getDatasetHeader().getDatasetId(),
-                    parameters.getParent_parameter_set_ID(),
-                    parameters.getParameter_set_ID(),
+                    parameters.parent_parameter_set_id,
+                    parameters.parameter_set_id,
                     ByteBuffer.wrap(bufferParameter.getArray())
             );
             datasetContainer.addDatasetParameters(datasetParameterSet);
@@ -133,25 +134,20 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
         scanDataUnitsAndUpdateMasterIndex(dataUnits, datasetContainer);
 
         datasetHeader.setOrderedBlocks(datasetContainer.getMasterIndexTable().areBlocksOrdered());
-        System.out.println(datasetHeader.isOrderedBlocks());
     }
 
     private void putBlocksInfoAligned(DatasetContainer datasetContainer, DataUnitAccessUnit dataUnitAccessUnit){
-        Map<DATA_CLASS, Map<DESCRIPTOR_ID, Map<Long, DataUnitAccessUnit.Block>>> blockPerClassPerDescriptorPerAU;
-        blockPerClassPerDescriptorPerAU = blockPerSequencePerClassPerDescriptorPerAU.computeIfAbsent(
-                dataUnitAccessUnit.getHeader().getSequence_ID(), k -> new TreeMap<>()
-        );
-        Map<DESCRIPTOR_ID, Map<Long, DataUnitAccessUnit.Block>> blockPerDescriptorPerAu;
-        blockPerDescriptorPerAu = blockPerClassPerDescriptorPerAU.computeIfAbsent(
-                dataUnitAccessUnit.getHeader().getAU_type(), k -> new TreeMap<>()
+        Map<DESCRIPTOR_ID, Map<SequenceIdentifier, Map<Long, AccessUnitBlock>>> blockPerDescriptorPerSequencePerAU;
+        blockPerDescriptorPerSequencePerAU = blockPerClassPerDescriptorPerSequencePerAU.computeIfAbsent(
+                dataUnitAccessUnit.header.au_type, k -> new TreeMap<>()
         );
 
-        DataUnitAccessUnit.Block[] blocks = dataUnitAccessUnit.getBlocks();
+        AccessUnitBlock[] blocks = dataUnitAccessUnit.getBlocks();
         for (int block_i = 0; block_i < blocks.length; block_i++) {
             try {
                 datasetContainer.getDatasetHeader().getDescriptorIndex(
                         dataUnitAccessUnit.getAUType(),
-                        blocks[block_i].getDescriptorIdentifier().ID
+                        blocks[block_i].descriptor_id.ID
                 );
             } catch (DataClassNotFoundException | NoSuchFieldException e) {
                 throw new IllegalArgumentException(e);
@@ -171,22 +167,28 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
 
         for (int descriptor_i = 0; descriptor_i < descriptor_idsToProvide.length; descriptor_i++) {
             DESCRIPTOR_ID descriptor_id = descriptor_idsToProvideCasted[descriptor_i];
-            Map<Long, DataUnitAccessUnit.Block> blockPerAu = blockPerDescriptorPerAu.computeIfAbsent(
+
+            Map<SequenceIdentifier, Map<Long, AccessUnitBlock>> blockPerSequencePerAU;
+            blockPerSequencePerAU = blockPerDescriptorPerSequencePerAU.computeIfAbsent(
                     descriptor_id, k -> new TreeMap<>()
             );
 
-            DataUnitAccessUnit.Block newBlock = dataUnitAccessUnit.getBlockByDescriptorId(descriptor_id);
-            blockPerAu.put(dataUnitAccessUnit.getHeader().getAccess_unit_ID(), newBlock);
+            Map<Long, AccessUnitBlock> blockPerAu = blockPerSequencePerAU.computeIfAbsent(
+                    dataUnitAccessUnit.getSequenceId(), k -> new TreeMap<>()
+            );
+
+            AccessUnitBlock newBlock = dataUnitAccessUnit.getBlockByDescriptorId(descriptor_id);
+            blockPerAu.put(dataUnitAccessUnit.header.access_unit_id, newBlock);
         }
     }
 
     private void putBlocksInfoUnaligned(DatasetContainer datasetContainer, DataUnitAccessUnit dataUnitAccessUnit){
-        DataUnitAccessUnit.Block[] blocks = dataUnitAccessUnit.getBlocks();
+        AccessUnitBlock[] blocks = dataUnitAccessUnit.getBlocks();
         for (int block_i = 0; block_i < blocks.length; block_i++) {
             try {
                 datasetContainer.getDatasetHeader().getDescriptorIndex(
                         dataUnitAccessUnit.getAUType(),
-                        blocks[block_i].getDescriptorIdentifier().ID
+                        blocks[block_i].descriptor_id.ID
                 );
             } catch (DataClassNotFoundException | NoSuchFieldException e) {
                 throw new IllegalArgumentException(e);
@@ -206,12 +208,12 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
 
         for (int descriptor_i = 0; descriptor_i < descriptor_idsToProvide.length; descriptor_i++) {
             DESCRIPTOR_ID descriptor_id = descriptor_idsToProvideCasted[descriptor_i];
-            Map<Long, DataUnitAccessUnit.Block> blockPerAu = blockPerDescriptorPerUnmappedAU.computeIfAbsent(
+            Map<Long, AccessUnitBlock> blockPerAu = blockPerDescriptorPerUnmappedAU.computeIfAbsent(
                     descriptor_id, k -> new TreeMap<>()
             );
 
-            DataUnitAccessUnit.Block newBlock = dataUnitAccessUnit.getBlockByDescriptorId(descriptor_id);
-            blockPerAu.put(dataUnitAccessUnit.getHeader().getAccess_unit_ID(), newBlock);
+            AccessUnitBlock newBlock = dataUnitAccessUnit.getBlockByDescriptorId(descriptor_id);
+            blockPerAu.put(dataUnitAccessUnit.header.access_unit_id, newBlock);
         }
     }
 
@@ -228,27 +230,26 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
 
             AccessUnitHeader accessUnitHeader = new AccessUnitHeader(
                     datasetContainer.getDatasetHeader(),
-                    (int) dataUnitAccessUnit.getHeader().getAccess_unit_ID(),
+                    (int) dataUnitAccessUnit.header.access_unit_id,
                     (byte) dataUnitAccessUnit.getBlocks().length,
-                    dataUnitAccessUnit.getHeader().getParameter_set_ID(),
-                    dataUnitAccessUnit.getHeader().getAU_type(),
-                    (int) dataUnitAccessUnit.getHeader().getRead_count(),
-                    (short) dataUnitAccessUnit.getHeader().getMm_threshold(),
-                    (int) dataUnitAccessUnit.getHeader().getMm_count(),
-                    dataUnitAccessUnit.getHeader().getRef_sequence_id(),
-                    dataUnitAccessUnit.getHeader().getRef_start_position(),
-                    dataUnitAccessUnit.getHeader().getRef_end_position(),
-                    dataUnitAccessUnit.getHeader().getSequence_ID(),
-                    dataUnitAccessUnit.getHeader().getAu_start_position(),
-                    dataUnitAccessUnit.getHeader().getAu_end_position(),
-                    dataUnitAccessUnit.getHeader().getExtended_au_start_position(),
-                    dataUnitAccessUnit.getHeader().getExtended_au_end_position()
+                    dataUnitAccessUnit.header.parameter_set_id,
+                    dataUnitAccessUnit.header.au_type,
+                    (int) dataUnitAccessUnit.header.read_count,
+                    (short) dataUnitAccessUnit.header.mm_threshold,
+                    (int) dataUnitAccessUnit.header.mm_count,
+                    dataUnitAccessUnit.header.ref_sequence_id,
+                    dataUnitAccessUnit.header.ref_start_position,
+                    dataUnitAccessUnit.header.ref_end_position,
+                    dataUnitAccessUnit.header.sequence_id,
+                    dataUnitAccessUnit.header.au_start_position,
+                    dataUnitAccessUnit.header.au_end_position,
+                    dataUnitAccessUnit.header.extended_au_start_position,
+                    dataUnitAccessUnit.header.extended_au_end_position
             );
 
             AccessUnitContainer accessUnitContainer = new AccessUnitContainer(
-                    datasetContainer,
-                    accessUnitHeader
-            );
+                    datasetContainer.getDatasetHeader(),
+                    accessUnitHeader);
 
             if(dataUnitAccessUnit.getAUType() != DATA_CLASS.CLASS_U) {
                 putInSequence(new IndexInfo(accessUnitContainer));
@@ -277,21 +278,25 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
             u_au_block_byte_offset = new long[unmappedAccessUnitContainers.size()]
                     [datasetHeader.getNumberOfDescriptors(DATA_CLASS.CLASS_U)];
         } catch (DataClassNotFoundException e){
-            throw new IllegalArgumentException(e);
+            if(unmappedAccessUnitContainers.size() != 0) {
+                throw new IllegalArgumentException(e);
+            } else {
+                u_au_block_byte_offset = new long[0][];
+            }
         }
 
         for(short sequenceIndex = 0; sequenceIndex < datasetHeader.getSeqIds().length; sequenceIndex++) {
             DatasetSequenceIndex datasetSequenceIndex = new DatasetSequenceIndex(sequenceIndex);
 
             SequenceIdentifier sequenceId = datasetHeader.getSeqIds()[sequenceIndex];
-            au_start_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-            au_end_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-            extended_au_start_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-            extended_au_end_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-            au_byte_offset[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-            block_byte_offset[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][][];
+            au_start_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+            au_end_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+            extended_au_start_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+            extended_au_end_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+            au_byte_offset[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+            block_byte_offset[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][][];
 
-            for (byte class_index = 0; class_index < datasetHeader.getNumberOfClasses(); class_index++) {
+            for (byte class_index = 0; class_index < datasetHeader.getNumberAlignedClasses(); class_index++) {
                 DataClassIndex dataClassIndex = new DataClassIndex(class_index);
 
                 block_byte_offset[sequenceIndex][class_index]
@@ -328,7 +333,7 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
                 block_byte_offset,
                 new Signature[0][],
                 u_au_byte_offset,
-                new long[0][]
+                u_au_block_byte_offset
         );
         masterIndexTable.setDefaultAUOffset(0);
         datasetContainer.setMasterIndexTable(masterIndexTable);
@@ -382,12 +387,13 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
         for(int u_au_i=0; u_au_i < unmappedAccessUnitContainers.size(); u_au_i++){
             u_au_byte_offset[u_au_i] = prior_au_byte_offset;
             prior_au_byte_offset += unmappedAccessUnitContainers.get(u_au_i).sizeWithHeader();
+            datasetContainer.addAccessUnit(unmappedAccessUnitContainers.get(u_au_i));
 
             Arrays.fill(u_au_block_byte_offset[u_au_i], -1);
         }
 
 
-        for(DATA_CLASS dataClass : datasetHeader.getClass_ids()) {
+        for(DATA_CLASS dataClass : datasetHeader.getClassIDs()) {
             byte[] descriptor_idsForClass;
             try {
                 descriptor_idsForClass = datasetHeader.getDescriptors(dataClass);
@@ -421,15 +427,19 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
             DATA_CLASS dataClass,
             long[][][][] block_byte_offset
     ){
-        for (byte descriptor_id : descriptor_idsForClass) {
+        Map<DESCRIPTOR_ID, Map<SequenceIdentifier, Map<Long, AccessUnitBlock>>>
+                blocksPerDescriptorPerSequencePerAu =
+                blockPerClassPerDescriptorPerSequencePerAU.get(dataClass);
+        for (DESCRIPTOR_ID descriptor_id : blocksPerDescriptorPerSequencePerAu.keySet()) {
             Payload descriptorPayload = new Payload(new byte[0]);
             long blockStart = datasetContainer.size() + 12 + 12 + 6;
             //12: descriptor stream container header,  12: descriptor stream header, 6: descriptor header content
 
             int numBlocks = 0;
-            for (SequenceIdentifier sequenceIdentifier : blockPerSequencePerClassPerDescriptorPerAU.keySet()) {
-                Map<Long, DataUnitAccessUnit.Block> blocks = blockPerSequencePerClassPerDescriptorPerAU
-                        .get(sequenceIdentifier).get(dataClass).get(DESCRIPTOR_ID.getDescriptorId(descriptor_id));
+            for (SequenceIdentifier sequenceIdentifier : blocksPerDescriptorPerSequencePerAu.get(descriptor_id).keySet()) {
+                Map<Long, AccessUnitBlock> blocks = blocksPerDescriptorPerSequencePerAu
+                        .get(descriptor_id)
+                        .get(sequenceIdentifier);
 
                 DatasetSequenceIndex datasetSequenceIndex;
                 try {
@@ -446,22 +456,22 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
 
                 DescriptorIndex descriptorIndex;
                 try {
-                    descriptorIndex = datasetHeader.getDescriptorIndex(dataClass, descriptor_id);
+                    descriptorIndex = datasetHeader.getDescriptorIndex(dataClass, descriptor_id.ID);
                 } catch (DataClassNotFoundException | NoSuchFieldException e) {
                     throw new InternalError(e);
                 }
 
 
-                Collection<Map.Entry<Long, DataUnitAccessUnit.Block>> blocksToWrite = blocks.entrySet();
+                Collection<Map.Entry<Long, AccessUnitBlock>> blocksToWrite = blocks.entrySet();
 
                 if (randomizedDescriptor) {
-                    List<Map.Entry<Long, DataUnitAccessUnit.Block>> tmpBlocks =
-                            new ArrayList<Map.Entry<Long, DataUnitAccessUnit.Block>>(blocksToWrite);
+                    List<Map.Entry<Long, AccessUnitBlock>> tmpBlocks =
+                            new ArrayList<Map.Entry<Long, AccessUnitBlock>>(blocksToWrite);
                     Collections.shuffle(tmpBlocks);
                     blocksToWrite = tmpBlocks;
                 }
 
-                for (Map.Entry<Long, DataUnitAccessUnit.Block> entry_block : blocksToWrite) {
+                for (Map.Entry<Long, AccessUnitBlock> entry_block : blocksToWrite) {
 
                     if (entry_block.getValue() != null) {
                         Payload blockPayload = entry_block.getValue().getDescriptorSpecificData();
@@ -481,7 +491,7 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
 
             DescriptorStreamContainer descriptorStreamContainer = new DescriptorStreamContainer();
             descriptorStreamContainer.setDescriptorStreamHeader(new DescriptorStreamHeader(
-                    descriptor_id,
+                    descriptor_id.ID,
                     dataClass,
                     numBlocks
             ));
@@ -507,7 +517,7 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
 
             int numBlocks = 0;
 
-            Map<Long, DataUnitAccessUnit.Block> blocks =
+            Map<Long, AccessUnitBlock> blocks =
                     blockPerDescriptorPerUnmappedAU.get(DESCRIPTOR_ID.getDescriptorId(descriptor_id));
 
             DescriptorIndex descriptorIndex;
@@ -518,16 +528,16 @@ public class DataUnitsToDSCDataset extends AbstractDataUnitsToDataset {
             }
 
 
-            Collection<Map.Entry<Long, DataUnitAccessUnit.Block>> blocksToWrite = blocks.entrySet();
+            Collection<Map.Entry<Long, AccessUnitBlock>> blocksToWrite = blocks.entrySet();
 
             if (randomizedDescriptor) {
-                List<Map.Entry<Long, DataUnitAccessUnit.Block>> tmpBlocks =
-                        new ArrayList<Map.Entry<Long, DataUnitAccessUnit.Block>>(blocksToWrite);
+                List<Map.Entry<Long, AccessUnitBlock>> tmpBlocks =
+                        new ArrayList<Map.Entry<Long, AccessUnitBlock>>(blocksToWrite);
                 Collections.shuffle(tmpBlocks);
                 blocksToWrite = tmpBlocks;
             }
 
-            for (Map.Entry<Long, DataUnitAccessUnit.Block> entry_block : blocksToWrite) {
+            for (Map.Entry<Long, AccessUnitBlock> entry_block : blocksToWrite) {
 
                 if (entry_block.getValue() != null) {
                     Payload blockPayload = entry_block.getValue().getDescriptorSpecificData();

@@ -93,14 +93,6 @@ public class SyntaxElementEncoder implements Closeable {
             true, /* adaptive_mode_flag */
             ref_source);
     }
-    
-    public SyntaxElementEncoder(
-                final BitWriter writer,
-                final AbstractBinarization binarization,
-                final InputStream ref_source) throws IOException {
-
-        this(writer, null, binarization, false, ref_source);
-    }
 
     public SyntaxElementEncoder(
                 final BitWriter writer,

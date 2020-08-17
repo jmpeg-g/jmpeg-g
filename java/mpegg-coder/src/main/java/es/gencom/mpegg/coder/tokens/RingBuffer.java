@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -31,7 +31,12 @@ public class RingBuffer<T>  {
     private int currentPosition;
     private final int maxSize;
 
-    public RingBuffer(int maxSize){
+    /**
+     * Creates a new Ring buffer
+     * @param maxSize Maximum size of the ring buffer. If more elements than ring buffer are added to the structure,
+     *                the oldest element will be overwritten.
+     */
+    RingBuffer(int maxSize){
         if(maxSize <= 0){
             throw new IllegalArgumentException();
         }
@@ -41,6 +46,13 @@ public class RingBuffer<T>  {
         this.maxSize = maxSize;
     }
 
+    /**
+     * This method maps the indexation scheme ordering by inverse order of insertion, to the position in the array
+     * storing the information
+     * @param userIndex The index  in inverse order of insertion: i.e. 0 corresponds to the last inserted one, 1 to the
+     *                  last but one and so on.
+     * @return The position on the array which corresponds to the given index.
+     */
     private int userIndexToBufferIndex(int userIndex){
         if(userIndex >= currentBufferSize){
             throw new IndexOutOfBoundsException();
@@ -53,17 +65,32 @@ public class RingBuffer<T>  {
         return result;
     }
 
+    /**
+     * Inserts a new value in the ring buffer. If the maximal size of the ring buffer (defined when calling the
+     * constructor is reached), the oldest value is overwritten.
+     * @param newValue Value to insert.
+     */
     public void addValue(T newValue){
         currentPosition = (currentPosition + 1) % maxSize;
         currentBufferSize = Integer.min(currentBufferSize+1, maxSize);
         buffer[currentPosition] = newValue;
     }
 
+    /**
+     * Gets the value from the ring buffer at the indicated position.
+     * @param pos The variable indexes the values in inverse order of insertion: i.e. 0 corresponds to the last inserted
+     *            one, 1 to the last but one and so on.
+     * @return
+     */
     public T getValue(int pos){
         int bufferIndex = userIndexToBufferIndex(pos);
         return (T)buffer[bufferIndex];
     }
 
+    /**
+     *
+     * @return the current size of the ring buffer.
+     */
     public int getSize(){
         return currentBufferSize;
     }

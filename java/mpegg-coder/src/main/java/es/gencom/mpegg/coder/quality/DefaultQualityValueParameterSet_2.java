@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -25,6 +25,9 @@
 
 package es.gencom.mpegg.coder.quality;
 
+/**
+ * This class implements one of the quality value preset defined in the MPEG-G specification.
+ */
 public class DefaultQualityValueParameterSet_2 extends AbstractQualityValueParameterSet{
     private static AbstractQualityBook qualityBook
             = new Default_qvps_ID_2_codebook();

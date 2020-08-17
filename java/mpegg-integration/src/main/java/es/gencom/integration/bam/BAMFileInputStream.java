@@ -25,7 +25,8 @@
 
 package es.gencom.integration.bam;
 
-import es.gencom.integration.gzip.GZipFileInputStream;
+import es.gencom.integration.gzip.BGZFFileInputStream;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.zip.DataFormatException;
@@ -34,7 +35,7 @@ import java.util.zip.DataFormatException;
  * @author Dmitry Repchevsky
  */
 
-public class BAMFileInputStream extends GZipFileInputStream {
+public class BAMFileInputStream extends BGZFFileInputStream {
 
     public final BAMHeader header;
     public final long first_mapped_pos;
@@ -80,5 +81,11 @@ public class BAMFileInputStream extends GZipFileInputStream {
         super.move(index >>> 16);
         index &= 0xFFFF;
         for (long i = index, j = 0; i > 0 && (j = skip(i)) >= 0; i -= j) {}
+    }
+
+    public long getPositionTo(long targetIndex) {
+        long blockPosition = super.getBlockPosition();
+        long targetPosition = targetIndex >>> 16;
+        return targetPosition - blockPosition;
     }
 }

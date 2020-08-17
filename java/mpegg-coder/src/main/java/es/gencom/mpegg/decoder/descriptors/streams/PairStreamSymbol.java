@@ -34,7 +34,7 @@ public class PairStreamSymbol {
     private final long[][] mappingPos;
     private final long[] mateAuId;
     private final long[] mateRecordIndex;
-    private final SplitType[] splitMate;
+    private final SplitType[][] splitMate;
     private final boolean read_1_first;
 
     public PairStreamSymbol(
@@ -43,7 +43,7 @@ public class PairStreamSymbol {
             long[][] mappingPos,
             long[] mateAuId,
             long[] mateRecordIndex,
-            SplitType[] splitMate,
+            SplitType[][] splitMate,
             boolean read_1_first
     ) {
         this.unpairedRead = unpairedRead;
@@ -75,7 +75,7 @@ public class PairStreamSymbol {
         return mateRecordIndex;
     }
 
-    public SplitType[] getSplitMate() {
+    public SplitType[][] getSplitMate() {
         return splitMate;
     }
 

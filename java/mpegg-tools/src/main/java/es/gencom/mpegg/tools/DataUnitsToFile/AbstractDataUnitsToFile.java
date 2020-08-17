@@ -2,8 +2,8 @@ package es.gencom.mpegg.tools.DataUnitsToFile;
 
 import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.util.*;
@@ -40,9 +40,9 @@ public abstract class AbstractDataUnitsToFile {
         int numUnalignedClasses = 0;
         Map<SequenceIdentifier, TreeMap<DATA_CLASS, Integer>> infoForHeader = new TreeMap<>();
         for(DataUnitAccessUnit dataUnit : dataUnits.getDataUnitAccessUnits()){
-            SequenceIdentifier sequenceId = dataUnit.getHeader().getSequence_ID();
+            SequenceIdentifier sequenceId = dataUnit.header.sequence_id;
 
-            DATA_CLASS dataClass = dataUnit.getHeader().getAU_type();
+            DATA_CLASS dataClass = dataUnit.header.au_type;
 
             if(dataClass != DATA_CLASS.CLASS_U) {
                 numAlignedClassesPerClass[sequenceId.getSequenceIdentifier()][dataClass.ID - 1] += 1;

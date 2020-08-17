@@ -25,7 +25,7 @@
 
 package es.gencom.integration.bam;
 
-import es.gencom.integration.gzip.GZipFileOutputStream;
+import es.gencom.integration.gzip.BGZFFileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -37,7 +37,7 @@ import java.nio.file.Path;
  * @author Dmitry Repchevsky
  */
 
-public class BAMFileOutputStream extends GZipFileOutputStream {
+public class BAMFileOutputStream extends BGZFFileOutputStream {
     
     /**
      * <p>

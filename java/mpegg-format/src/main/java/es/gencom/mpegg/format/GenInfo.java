@@ -69,7 +69,7 @@ public abstract class GenInfo<T> {
      * 
      * @throws IOException 
      */
-    public abstract void write(MPEGWriter writer) throws IOException, InvalidMPEGStructure;
+    public abstract void write(MPEGWriter writer) throws IOException, InvalidMPEGStructureException;
 
     /**
      * Generic method to write structure with its header into the bitstream.
@@ -79,7 +79,7 @@ public abstract class GenInfo<T> {
      * @param writer
      * @throws IOException
      */
-    public final void writeWithHeader(final MPEGWriter writer) throws IOException, InvalidMPEGStructure {
+    public final void writeWithHeader(final MPEGWriter writer) throws IOException, InvalidMPEGStructureException {
 
         final long size = size();
 
@@ -103,7 +103,6 @@ public abstract class GenInfo<T> {
         }
     }
 
-
     /**
      * The method to read the structure content from the bitstream.
      * 
@@ -113,11 +112,11 @@ public abstract class GenInfo<T> {
      * @return the read structure
      * 
      * @throws IOException 
-     * @throws InvalidMPEGStructure 
+     * @throws InvalidMPEGStructureException 
      * @throws ParsedSizeMismatchException 
      * @throws InvalidMPEGGFileException
      */
-    public abstract T read(MPEGReader reader, long size) throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException, InvalidMPEGGFileException;
+    public abstract T read(MPEGReader reader, long size) throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException, InvalidMPEGGFileException;
 
     /**
      * The method to read the structure content from the readable byte channel.
@@ -129,21 +128,21 @@ public abstract class GenInfo<T> {
      * @throws InvalidMPEGGFileException
      *
      * @throws IOException, IllegalArgumentException
-     * @throws InvalidMPEGStructure
+     * @throws InvalidMPEGStructureException
      * @throws ParsedSizeMismatchException
      */
-    public T read(ReadableByteChannel reader) throws IOException, IllegalArgumentException, InvalidMPEGStructure, ParsedSizeMismatchException, InvalidMPEGGFileException {
+    public T read(ReadableByteChannel reader) 
+            throws IOException, IllegalArgumentException, InvalidMPEGStructureException, 
+                   ParsedSizeMismatchException, InvalidMPEGGFileException {
+
         Header header = Header.read(reader);
         if(header == null){
             throw new EOFException();
         }
-        if(!header.key.equals(key)){
+
+        if(!header.key.equals(key)) {
             throw new IllegalArgumentException(
-                    String.format("Invalid DatasetGroupContainer KEY: %s (must be %s)",
-                            header.key,
-                            DatasetGroupContainer.KEY
-                    )
-            );
+                    String.format("Invalid Header KEY: %s (must be %s)", header.key, key));
 
         }
 
@@ -164,11 +163,14 @@ public abstract class GenInfo<T> {
      *
      */
     public T read(final FileChannel reader) 
-            throws IOException, IllegalArgumentException, InvalidMPEGStructure, ParsedSizeMismatchException, InvalidMPEGGFileException {
+            throws IOException, IllegalArgumentException, InvalidMPEGStructureException, 
+                   ParsedSizeMismatchException, InvalidMPEGGFileException {
+
         Header header = Header.read(reader);
         if(header == null){
             throw new EOFException();
         }
+        
         if(!header.key.equals(key)){
             throw new IllegalArgumentException();
         }
@@ -203,7 +205,7 @@ public abstract class GenInfo<T> {
      * @param channel
      * @throws IOException 
      */
-    public final void write(final WritableByteChannel channel) throws IOException, InvalidMPEGStructure {
+    public final void write(final WritableByteChannel channel) throws IOException, InvalidMPEGStructureException {
         
         final long size = size();
 
@@ -234,7 +236,7 @@ public abstract class GenInfo<T> {
      * @param channel
      * @throws IOException 
      */
-    public final void write(final SeekableByteChannel channel) throws IOException, InvalidMPEGStructure {
+    public final void write(final SeekableByteChannel channel) throws IOException, InvalidMPEGStructureException {
         final long start_position = channel.position();
         channel.position(start_position + Header.SIZE);
         WritableMSBitChannel writer = new WritableMSBitChannel(channel);

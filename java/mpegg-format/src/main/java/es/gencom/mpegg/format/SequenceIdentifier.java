@@ -25,9 +25,10 @@
 
 package es.gencom.mpegg.format;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class SequenceIdentifier implements Comparable{
+public class SequenceIdentifier implements Comparable {
     private final int sequenceIdentifier;
 
     public SequenceIdentifier(int sequenceIdentifier) {

@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -33,46 +33,40 @@ import java.util.Arrays;
 
 public abstract class AbstractSequencesSource {
     public abstract SequenceIdentifier getSequenceIdentifier(String sequenceName);
-    public abstract String getSequenceName(SequenceIdentifier sequenceId);
 
-    public final Payload getSubsequenceBytes(SequenceIdentifier sequenceIdentifier, int startPos, int endPos) throws IOException {
-        return getSubsequence(sequenceIdentifier, startPos, endPos);
-    }
-
+    /**
+     * Obtains an entire portion of the reference and returns it as a payload.
+     * @param sequenceIdentifier identifier of the sequence from which information must be obtained
+     * @return A payload populated with the nucleotides stored on the sequence identified between the provided positions.
+     */
     protected abstract Payload getSequence(SequenceIdentifier sequenceIdentifier);
 
-    public Payload getSubsequence(String sequenceName, int startPos, int endPos) throws IOException {
-        return getSubsequence(getSequenceIdentifier(sequenceName), startPos, endPos);
-    }
-
+    /**
+     * Obtains a portion of the reference and returns it as a payload.
+     * @param sequenceIdentifier identifier of the sequence from which information must be obtained
+     * @param startPos first position (0-based) to be retrieved. This position is included in the result.
+     * @param endPos last position (0-based) to be retrieved. This position is not included in the result.
+     * @return A payload populated with the nucleotides stored on the sequence identified between the provided positions.
+     * @throws IOException This exception can be caused by multiple sources.
+     */
     public abstract Payload getSubsequence(SequenceIdentifier sequenceIdentifier, int startPos, int endPos) throws IOException;
 
-    public class SequenceInformationEntry{
-        private String name;
-        private int length;
-
-        public SequenceInformationEntry(String name, int length) {
-            this.name = name;
-            this.length = length;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public int getLength() {
-            return length;
-        }
-    }
-
-    protected byte[] obtainSubsequence(byte[] sequence, int startPos, int endPos) {
+    /**
+     * Returns the provided sequence which is either shorten to the requested size, or padded with 'N' until reaching
+     * requested size
+     * @param sequence Array of bytes encoding sequences
+     * @param startPos first position (0-based) to be retrieved. This position is included in the result.
+     * @param endPos last position (0-based) to be retrieved. This position is not included in the result.
+     * @return A copy of the provided sequence, either shortened to match size or padded with 'N's.
+     */
+    public static byte[] obtainSubsequence(byte[] sequence, int startPos, int endPos) {
         if (endPos <= sequence.length){
             return Arrays.copyOfRange(sequence, startPos, endPos);
         }else{
             byte[] result = new byte[endPos-startPos];
-            System.arraycopy(sequence, startPos, result, 0, endPos-startPos);
-            for(int pos_i = sequence.length - startPos; pos_i < endPos; pos_i++){
-                result[pos_i] = 'N';
+            System.arraycopy(sequence, startPos, result, 0, sequence.length-startPos);
+            for(int pos_i = sequence.length; pos_i < endPos; pos_i++){
+                result[pos_i-startPos] = 'N';
             }
             return result;
         }

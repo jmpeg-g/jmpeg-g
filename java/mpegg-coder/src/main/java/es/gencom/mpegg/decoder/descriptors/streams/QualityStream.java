@@ -25,12 +25,12 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.quality.AbstractQualityValueParameterSet;
 import es.gencom.mpegg.format.DATA_CLASS;
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation;
+import es.gencom.mpegg.encoder.Operation;
 import es.gencom.mpegg.coder.compression.*;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -80,7 +80,7 @@ public class QualityStream {
 
     public QualityStream(
             EncodingParameters encodingParameters,
-            DataUnitAccessUnit.Block block,
+            AccessUnitBlock block,
             DATA_CLASS dataClass
     ) throws IOException {
         this.dataClass = dataClass;
@@ -111,7 +111,7 @@ public class QualityStream {
     public short[] getQualitiesAligned(
             byte[][] operations,
             int[][] operationLength,
-            long[] segmentStart,
+            long[] spliceStart,
             long auStart
     ) throws IOException {
         boolean hasValue;
@@ -122,7 +122,7 @@ public class QualityStream {
         }
 
         if(hasValue){
-            return decode_qvs(qualityValueParameterSet, dataClass, operations, operationLength, segmentStart, auStart);
+            return decode_qvs(qualityValueParameterSet, dataClass, operations, operationLength, spliceStart, auStart);
         } else {
             return new short[0];
         }
@@ -157,7 +157,7 @@ public class QualityStream {
             DATA_CLASS dataClass,
             byte[][] operations,
             int[][] operationLength,
-            long[] segmentStart,
+            long[] spliceSegmentStart,
             long auStart) throws IOException {
 
         int length = 0;
@@ -176,7 +176,7 @@ public class QualityStream {
         int baseIdx = 0;
         for(int splice_i=0; splice_i < operations.length; splice_i++) {
             int positionInSplice = 0;
-            int offset = Math.toIntExact(segmentStart[splice_i] - auStart);
+            int offset = Math.toIntExact(spliceSegmentStart[splice_i] - auStart);
             for (int operation_i = 0; operation_i < operations[splice_i].length; operation_i++) {
                 final byte operation = operations[splice_i][operation_i];
                 for (

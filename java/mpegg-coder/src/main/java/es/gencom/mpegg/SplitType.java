@@ -26,15 +26,33 @@
 package es.gencom.mpegg;
 
 public enum SplitType {
-    SameRecord((byte)0),
-    DifferentRecord((byte) 1),
-    UnmappedOtherRecord((byte)2),
-    UnmappedSameRecord((byte)3),
-    Unpaired((byte)3);
+    MappedSameRecord((byte)0),
+    UnmappedSameRecord((byte)1),
+    MappedDifferentRecordSameSequence((byte)2),
+    UnmappedDifferentRecordSameAU((byte)3),
+    MappedDifferentRecordDifferentSequence((byte)4),
+    UnmappedDifferentRecordDifferentAU((byte)5),
+    Unpaired((byte)6);
 
     public final byte id;
 
     SplitType(final byte id) {
         this.id = id;
+    }
+
+    public boolean segmentSequenceInRecord(){
+        switch (this){
+            case MappedSameRecord:
+            case UnmappedSameRecord:
+                return true;
+            case MappedDifferentRecordSameSequence:
+            case UnmappedDifferentRecordSameAU:
+            case MappedDifferentRecordDifferentSequence:
+            case UnmappedDifferentRecordDifferentAU:
+            case Unpaired:
+                return false;
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 }

@@ -1,12 +1,12 @@
 package es.gencom.mpegg.tools;
 
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation;
+import es.gencom.mpegg.encoder.Operation;
 import es.gencom.mpegg.format.SequenceIdentifier;
 
 import java.util.Arrays;
 
 public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
-    static long instancesCount = 0;
+    private static long instancesCount = 0;
 
     final private String readName;
     final private long instanceId;
@@ -24,6 +24,8 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
     final private boolean mateUnmapped;
     final private boolean mateOnReverse;
     final private boolean paired;
+    final private short mappingScore;
+    final private String readGroupName;
     private short[] qualities;
 
     public SAMLikeAlignment(
@@ -42,7 +44,9 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
             boolean lastMate,
             boolean unpaired,
             boolean mateUnmapped,
-            boolean mateOnReverse
+            boolean mateOnReverse,
+            short mappingScore,
+            String readGroupName
     ) {
         this.instanceId = instancesCount;
         instancesCount++;
@@ -63,6 +67,8 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
         this.paired = !unpaired;
         this.mateUnmapped = mateUnmapped;
         this.mateOnReverse = mateOnReverse;
+        this.mappingScore = mappingScore;
+        this.readGroupName = readGroupName;
     }
 
     static void mergeOperations(
@@ -215,6 +221,15 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
 
     @Override
     public int compareTo(SAMLikeAlignment samLikeAlignment) {
+        if(getSequenceId() == null && samLikeAlignment.getSequenceId() != null){
+            return 1;
+        }
+        if(getSequenceId() != null && samLikeAlignment.getSequenceId() == null){
+            return -1;
+        }
+        if(getSequenceId() == null && samLikeAlignment.getSequenceId() == null){
+            return getReadName().compareTo(samLikeAlignment.getReadName());
+        }
         if (sequenceId.getSequenceIdentifier() != samLikeAlignment.getSequenceId().getSequenceIdentifier()) {
             return Integer.compare(sequenceId.getSequenceIdentifier(), samLikeAlignment.getSequenceId().getSequenceIdentifier());
         }
@@ -291,5 +306,13 @@ public class SAMLikeAlignment implements Comparable<SAMLikeAlignment>{
 
     public short[] getQualities() {
         return qualities;
+    }
+
+    public short getMappingScore() {
+        return mappingScore;
+    }
+
+    public String getReadGroupName() {
+        return readGroupName;
     }
 }

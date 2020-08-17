@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -25,13 +25,14 @@
 
 package es.gencom.mpegg.decoder;
 
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
 import es.gencom.mpegg.coder.quality.AbstractQualityValueParameterSet;
 import es.gencom.mpegg.Record;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.tokens.TokenValuesDecoder;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.decoder.descriptors.streams.*;
 
 import java.io.IOException;
@@ -39,6 +40,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DataUnitAccessUnitDecoder {
+
+    /**
+     * Decode the data unit given as parameter, and return a list of decoded records.
+     * @param dataUnitToDecode DataUnit Access unit to be decoded
+     * @param sequencesSource The source of reference information to be used while decoding
+     * @return All decoded records.
+     * @throws IOException Exception can be risen at multiple points.
+     */
     public static List<Record> decode(
             DataUnitAccessUnit dataUnitToDecode,
             AbstractSequencesSource sequencesSource
@@ -46,23 +55,21 @@ public class DataUnitAccessUnitDecoder {
     ) throws IOException {
         DATA_CLASS dataUnitClass = dataUnitToDecode.getAUType();
 
-        long auId = dataUnitToDecode.getHeader().getAccess_unit_ID();
-
+        long auId = dataUnitToDecode.header.access_unit_id;
 
         DataUnitParameters dataUnitParameters = dataUnitToDecode.getParameter();
         AbstractQualityValueParameterSet qualityValueParameterSet =
                 dataUnitParameters.getQualityValueParameterSet(dataUnitClass);
 
         GenomicPosition genomicPosition = new GenomicPosition(
-                dataUnitToDecode.getHeader().getSequence_ID(),
-                dataUnitToDecode.getHeader().getAu_start_position()
-        );
+                dataUnitToDecode.header.sequence_id,
+                dataUnitToDecode.header.au_start_position);
 
         AbstractAccessUnitDecoder abstractAccessUnitDecoder;
 
 
         short[][][] tokensReadIdentifiers = null;
-        DataUnitAccessUnit.Block rnameBlock = dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.RNAME);
+        AccessUnitBlock rnameBlock = dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.RNAME);
         if(rnameBlock != null){
             tokensReadIdentifiers = TokenValuesDecoder.decodeTokenValues(
                     rnameBlock.getDescriptorSpecificData(),
@@ -75,7 +82,6 @@ public class DataUnitAccessUnitDecoder {
 
         if(dataUnitClass.ID < DATA_CLASS.CLASS_HM.ID) {
             abstractAccessUnitDecoder = new MappedAccessUnitDecoder(
-                    auId,
                     genomicPosition,
                     new PosStream(
                             dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.POS),
@@ -87,6 +93,7 @@ public class DataUnitAccessUnitDecoder {
                             dataUnitClass,
                             dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.PAIR),
                             dataUnitParameters.getNumberTemplateSegments(),
+                            genomicPosition.getSequenceId(),
                             dataUnitParameters.getEncodingParameters()
                     ),
                     new MMapStream(
@@ -132,14 +139,26 @@ public class DataUnitAccessUnitDecoder {
                             dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.QV),
                             dataUnitClass
                     ),
+                    new MScoreStream(
+                            dataUnitClass,
+                            dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.MSCORE),
+                            dataUnitParameters.getEncodingParameters()
+                    ),
+                    new RGroupStream(
+                            dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.RGROUP),
+                            dataUnitClass,
+                            dataUnitParameters.getEncodingParameters()
+                    ),
                     sequencesSource,
                     tokensReadIdentifiers,
                     dataUnitParameters.getEncodingParameters().getAlphabetId(),
-                    qualityValueParameterSet
+                    dataUnitClass,
+                    dataUnitParameters.getEncodingParameters().getReadGroupIds(),
+                    dataUnitParameters.getNumberTemplateSegments(),
+                    dataUnitParameters.getEncodingParameters().getQVDepth()
             );
         }else if(dataUnitClass == DATA_CLASS.CLASS_HM){
             abstractAccessUnitDecoder = new HalfMappedAccessUnitDecoder(
-                    auId,
                     dataUnitParameters.getEncodingParameters().getAlphabetId(),
                     genomicPosition,
                     sequencesSource,
@@ -147,6 +166,19 @@ public class DataUnitAccessUnitDecoder {
                             dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.POS),
                             genomicPosition,
                             dataUnitClass,
+                            dataUnitParameters.getEncodingParameters()
+                    ),
+                    new PairStream(
+                            dataUnitClass,
+                            dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.PAIR),
+                            dataUnitParameters.getNumberTemplateSegments(),
+                            genomicPosition.getSequenceId(),
+                            dataUnitParameters.getEncodingParameters()
+                    ),
+                    new MMapStream(
+                            dataUnitClass,
+                            dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.MMAP),
+                            dataUnitParameters.isMultiple_alignments_flag(),
                             dataUnitParameters.getEncodingParameters()
                     ),
                     new RlenStream(
@@ -186,7 +218,20 @@ public class DataUnitAccessUnitDecoder {
                             dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.QV),
                             dataUnitClass
                     ),
-                    tokensReadIdentifiers
+                    new MScoreStream(
+                            dataUnitClass,
+                            dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.MSCORE),
+                            dataUnitParameters.getEncodingParameters()
+                    ),
+                    new RGroupStream(
+                            dataUnitToDecode.getBlockByDescriptorId(DESCRIPTOR_ID.RGROUP),
+                            dataUnitClass,
+                            dataUnitParameters.getEncodingParameters()
+                    ),
+                    tokensReadIdentifiers,
+                    dataUnitParameters.getEncodingParameters().getReadGroupIds(),
+                    dataUnitParameters.getNumberTemplateSegments(),
+                    dataUnitParameters.getEncodingParameters().getQVDepth()
             );
         }else{
             throw new IllegalArgumentException();

@@ -33,6 +33,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
+ * <p>
+ * ISO/IEC 23092-1 Dataset Header implementation (6.5.2.2).
+ * </p>
+ * 
  * @author Dmitry Repchevsky &amp; Daniel Naro
  */
 
@@ -59,7 +63,7 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
 
     private DATA_CLASS[] class_ids;
     private byte[][] desc_ids;
-    private Alphabet alphabet_id;
+    private ALPHABET alphabet_id;
     private long num_u_access_units;
     private long num_u_clusters;
     private int multiple_signature_base;
@@ -92,15 +96,15 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
             DatasetType dataset_type,
             DATA_CLASS[] dataClasses,
             byte[][] descriptorIdentifiers,
-            Alphabet alphabet,
+            ALPHABET alphabet,
             long num_u_access_units,
             long num_u_clusters,
             int multiple_signature_base,
             byte u_signature_size,
             boolean u_signature_constant_length,
             short u_signature_length,
-            int[] thresholds
-    ){
+            int[] thresholds) {
+        
         super(KEY);
 
         if(version.length != 4){
@@ -145,71 +149,6 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         this.u_signature_length = u_signature_length;
         this.thresholds = thresholds;
     }
-
-    @Override
-    protected long size() {
-        long sizeInBits = 0;
-        sizeInBits += 8; //datasetGroupId
-        sizeInBits += 16; //dataset_Id
-        sizeInBits += 4*8; //version
-        sizeInBits += 1; //multiple_alignment_flag
-        sizeInBits += 1; //byte_offset_size_flag
-        sizeInBits += 1; //non_overlapping_au_range
-        sizeInBits += 1; //pos_40_bits
-        sizeInBits += 1; //block_header_flag
-        if(block_header_flag){
-            sizeInBits += 1; //MIT_flag
-            sizeInBits += 1; //ClassContiguous
-        }else{
-            sizeInBits += 1; //ordered_blocks_flag
-        }
-        sizeInBits += 16; //seq_count
-        if(seq_ids.length > 0){
-            sizeInBits += 8; //referenceID
-            sizeInBits += 16 * seq_ids.length;
-            sizeInBits += 32 * seq_blocks.length;
-        }
-        sizeInBits += 4; //datasetType
-        if(mit_flag){
-            sizeInBits += 4; //num_classes
-            for(int class_i=0; class_i<class_ids.length; class_i++){
-                sizeInBits += 4; //class id
-                if(!block_header_flag){
-                    sizeInBits += 5; //num_descriptors
-                    sizeInBits += 7 * desc_ids[class_i].length; //descriptor ids
-                }
-            }
-        }
-        sizeInBits += 8; //alphabetId
-        sizeInBits += 32; //num_u_access_units
-        if(num_u_access_units > 0){
-            sizeInBits += 32; //num_u_clusters
-            sizeInBits += 31; //multiple_signature_base
-            if(multiple_signature_base > 0){
-                sizeInBits += 6;
-            }
-            sizeInBits += 1; //u_signature_constant_length
-            if(u_signature_constant_length){
-                sizeInBits += 8; //u_signature_length
-            }
-        }
-
-        if(seq_ids.length > 0) {
-            int previous_threshold = thresholds[0];
-            sizeInBits += 1; //initial flag
-            sizeInBits += 31; //initial value
-            for(short seq_i=1; seq_i<getSeqIds().length; seq_i++){
-                int current_threshold = thresholds[seq_i-1];
-                sizeInBits += 1; //flag
-                if(current_threshold != previous_threshold){
-                    sizeInBits += 31;//threshold
-                    previous_threshold = current_threshold;
-                }
-            }
-        }
-
-        return (sizeInBits >> 3) + (sizeInBits % 8 != 0 ? 1:0);
-    }
     
     public short getDatasetGroupId() {
         return dataset_group_id;
@@ -231,11 +170,14 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         return non_overlapping_au_range;
     }
     
-
-    public boolean isBlockHeader() {
+    public boolean isBlockHeaderFlag() {
         return block_header_flag;
     }
 
+    public void setBlockHeaderFlag(final boolean block_header_flag) {
+        this.block_header_flag = block_header_flag;
+    }
+    
     public boolean isMIT() {
         return mit_flag;
     }
@@ -340,15 +282,15 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
     
     public byte getDescriptorId(
             DATA_CLASS dataClass,
-            DescriptorIndex descriptorIndex
-    ) throws DataClassNotFoundException {
+            DescriptorIndex descriptorIndex) throws DataClassNotFoundException {
+        
         DataClassIndex classIndex = getClassIndex(dataClass);
-        if (
-                desc_ids[classIndex.getIndex()] == null
-                        || descriptorIndex.getDescriptor_index() >= desc_ids[classIndex.getIndex()].length
-        ) {
+        if (desc_ids[classIndex.getIndex()] == null || 
+            descriptorIndex.getDescriptor_index() >= desc_ids[classIndex.getIndex()].length) {
+            
             throw new IllegalArgumentException();
         }
+        
         return desc_ids[classIndex.getIndex()][descriptorIndex.getDescriptor_index()];
     }
 
@@ -358,15 +300,15 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
     ) throws DataClassNotFoundException, NoSuchFieldException {
         DataClassIndex class_index = getClassIndex(dataClass);
         byte numberDescriptor = (byte) desc_ids[class_index.getIndex()].length;
-        for(byte descriptor_i=0; descriptor_i<numberDescriptor; descriptor_i++){
-            if(desc_ids[class_index.getIndex()][descriptor_i] == descriptorIdentifier){
+        for(byte descriptor_i = 0; descriptor_i < numberDescriptor; descriptor_i++) {
+            if(desc_ids[class_index.getIndex()][descriptor_i] == descriptorIdentifier) {
                 return new DescriptorIndex(descriptor_i);
             }
         }
         throw new NoSuchFieldException();
     }
     
-    public Alphabet getAlphabetId() {
+    public ALPHABET getAlphabetId() {
         return alphabet_id;
     }
     
@@ -386,7 +328,7 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         return multiple_signature_base;
     }
     
-    public void setMultipleSignatureBase(int multiple_signature_base) {
+    public void setMultipleSignatureBase(final int multiple_signature_base) {
         this.multiple_signature_base = multiple_signature_base;
     }
     
@@ -400,11 +342,11 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         return u_signature_length;
     }
     
-    public void setUnmappedSignatureLength(byte u_signature_length) {
+    public void setUnmappedSignatureLength(final byte u_signature_length) {
         this.u_signature_length = u_signature_length;
     }
 
-    public void setNumberOfUnalignedAccessUnits(int num_u_access_units) {
+    public void setNumberOfUnalignedAccessUnits(final int num_u_access_units) {
         this.num_u_access_units = num_u_access_units;
     }
     
@@ -415,84 +357,136 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         return thresholds[sequenceIndex.getIndex()];
     }
     
+    public DATA_CLASS getClassId(DataClassIndex class_i){
+        return class_ids[class_i.getIndex()];
+    }
+
+    public DataClassIndex getClassIndex(DATA_CLASS dataClass) throws DataClassNotFoundException {
+        for(byte class_i = 0; class_i < class_ids.length; class_i++){
+            if(class_ids[class_i].equals(dataClass)){
+                return new DataClassIndex(class_i);
+            }
+        }
+        throw new DataClassNotFoundException(dataClass);
+    }
+
+    public DATA_CLASS[] getClassIDs() {
+        return class_ids;
+    }
+
+    public void setClassIDs(DATA_CLASS[] class_ids) {
+        this.class_ids = class_ids;
+    }
+
+    public DatasetSequenceIndex getSequenceIndex(SequenceIdentifier sequenceId) throws SequenceNotAvailableException {
+        for(short sequenceIndex = 0; sequenceIndex < seq_ids.length; sequenceIndex++ ) {
+            if(seq_ids[sequenceIndex].equals(sequenceId)) {
+                return new DatasetSequenceIndex(sequenceIndex);
+            }
+        }
+        throw new SequenceNotAvailableException();
+    }
+
+    public boolean isPos40bits() {
+        return pos_40_bits;
+    }
+
+    public void setPos40bits(final boolean pos_40_bits) {
+        this.pos_40_bits = pos_40_bits;
+    }
+    
+    public boolean isMultipleAlignment() {
+        return multiple_alignment_flag;
+    }
+
+    public void setMultipleAlignment(final boolean multiple_alignment_flag) {
+        this.multiple_alignment_flag = multiple_alignment_flag;
+    }
+    
+    public long getNumberUAccessUnits() {
+        return num_u_access_units;
+    }
+
+    public void setOrderedBlocks(boolean orderedBlocks) {
+        ordered_blocks_flag = orderedBlocks;
+    }
+    
     @Override
     public void write(final MPEGWriter writer) throws IOException {
-        try {
-            writer.writeBits(dataset_group_id, 8);
-            writer.writeBits(dataset_id, 16);
-            writer.writeBytes(version);
-            writer.writeBoolean(multiple_alignment_flag);
-            writer.writeBoolean(byte_offset_size_flag);
-            writer.writeBoolean(non_overlapping_au_range);
-            writer.writeBoolean(pos_40_bits);
-            writer.writeBoolean(block_header_flag);
-            if (block_header_flag) {
-                writer.writeBoolean(mit_flag);
-                writer.writeBoolean(cc_mode_flag);
-            } else {
-                writer.writeBoolean(ordered_blocks_flag);
-            }
-            writer.writeShort((short) seq_blocks.length);
-            if (seq_blocks.length > 0) {
-                writer.writeByte((byte)reference_id);
-                for (int seq_i = 0; seq_i < seq_blocks.length; seq_i++) {
-                    writer.writeShort(
-                            (short) seq_ids[seq_i].getSequenceIdentifier()
-                    );
-                }
-                for (int seq_i = 0; seq_i < seq_blocks.length; seq_i++) {
-                    writer.writeInt((int) seq_blocks[seq_i]);
-                }
-            }
 
-            dataset_type.write(writer);
-
-            if (isMIT()) {
-                writer.writeBits(class_ids.length, 4);
-                for (int class_i = 0; class_i < class_ids.length; class_i++) {
-                    writer.writeBits(class_ids[class_i].ID, 4);
-                    if (!block_header_flag) {
-                        writer.writeBits(getNumberOfDescriptors(class_ids[class_i]), 5);
-                        for (int desc_i = 0; desc_i < getNumberOfDescriptors(class_ids[class_i]); desc_i++) {
-                            writer.writeBits(desc_ids[class_i][desc_i], 7);
-                        }
-                    }
-                }
-            }
-
-            writer.writeByte(alphabet_id.id);
-            writer.writeInt((int) num_u_access_units);
-            if (num_u_access_units > 0) {
-                writer.writeInt((int) num_u_clusters);
-                writer.writeBits(multiple_signature_base, 31);
-                if (multiple_signature_base > 0) {
-                    writer.writeBits(u_signature_size, 6);
-                }
-                writer.writeBoolean(u_signature_constant_length);
-                if (u_signature_constant_length) {
-                    writer.writeByte((byte) u_signature_length);
-                }
-            }
-
-            if (seq_ids.length > 0) {
-                writer.writeBoolean(true);
-                int previous_writer_threshold = thresholds[0];
-                writer.writeBits(thresholds[0], 31);
-                for (int seq_i = 1; seq_i < seq_ids.length; seq_i++) {
-                    int current_threshold = thresholds[seq_i];
-                    if (current_threshold != previous_writer_threshold) {
-                        writer.writeBoolean(true);
-                        writer.writeBits(current_threshold, 31);
-                        previous_writer_threshold = current_threshold;
-                    } else {
-                        writer.writeBoolean(false);
-                    }
-                }
-            }
-            writer.flush();
-        } catch (DataClassNotFoundException e) {
-            e.printStackTrace();
+        writer.writeBits(dataset_group_id, 8);
+        writer.writeBits(dataset_id, 16);
+        writer.writeBytes(version);
+        writer.writeBoolean(multiple_alignment_flag);
+        writer.writeBoolean(byte_offset_size_flag);
+        writer.writeBoolean(non_overlapping_au_range);
+        writer.writeBoolean(pos_40_bits);
+        writer.writeBoolean(block_header_flag);
+        if (block_header_flag) {
+            writer.writeBoolean(mit_flag);
+            writer.writeBoolean(cc_mode_flag);
+        } else {
+            writer.writeBoolean(ordered_blocks_flag);
         }
+        writer.writeShort((short) seq_blocks.length);
+        if (seq_blocks.length > 0) {
+            writer.writeByte((byte)reference_id);
+            for (int seq_i = 0; seq_i < seq_blocks.length; seq_i++) {
+                writer.writeShort(
+                        (short) seq_ids[seq_i].getSequenceIdentifier()
+                );
+            }
+            for (int seq_i = 0; seq_i < seq_blocks.length; seq_i++) {
+                writer.writeInt((int) seq_blocks[seq_i]);
+            }
+        }
+
+        dataset_type.write(writer);
+
+        if (isMIT()) {
+            writer.writeBits(class_ids.length, 4);
+            for (int class_i = 0; class_i < class_ids.length; class_i++) {
+                writer.writeBits(class_ids[class_i].ID, 4);
+                if (!block_header_flag) {
+                    writer.writeBits(getNumberOfDescriptors(class_ids[class_i]), 5);
+                    for (int desc_i = 0; desc_i < getNumberOfDescriptors(class_ids[class_i]); desc_i++) {
+                        writer.writeBits(desc_ids[class_i][desc_i], 7);
+                    }
+                }
+            }
+        }
+
+        writer.writeByte(alphabet_id.id);
+        writer.writeInt((int) num_u_access_units);
+        if (num_u_access_units > 0) {
+            writer.writeInt((int) num_u_clusters);
+            writer.writeBits(multiple_signature_base, 31);
+            if (multiple_signature_base > 0) {
+                writer.writeBits(u_signature_size, 6);
+            }
+            writer.writeBoolean(u_signature_constant_length);
+            if (u_signature_constant_length) {
+                writer.writeByte((byte) u_signature_length);
+            }
+        }
+
+        if (seq_ids.length > 0) {
+            writer.writeBoolean(true);
+            int previous_writer_threshold = thresholds[0];
+            writer.writeBits(thresholds[0], 31);
+            for (int seq_i = 1; seq_i < seq_ids.length; seq_i++) {
+                int current_threshold = thresholds[seq_i];
+                if (current_threshold != previous_writer_threshold) {
+                    writer.writeBoolean(true);
+                    writer.writeBits(current_threshold, 31);
+                    previous_writer_threshold = current_threshold;
+                } else {
+                    writer.writeBoolean(false);
+                }
+            }
+        }
+
+        writer.flush();
     }
     
     @Override
@@ -560,7 +554,7 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
                 }
             }
         }
-        alphabet_id = Alphabet.getAlphabet(reader.readByte());
+        alphabet_id = ALPHABET.getAlphabet(reader.readByte());
         num_u_access_units = reader.readInt();
         if(num_u_access_units > 0){
             num_u_clusters = reader.readInt();
@@ -595,66 +589,69 @@ public class DatasetHeader extends GenInfo<DatasetHeader> {
         
         return this;
     }
-
-    public DATA_CLASS getClassId(DataClassIndex class_i){
-        return class_ids[class_i.getIndex()];
-    }
-
-    public DataClassIndex getClassIndex(DATA_CLASS dataClass) throws DataClassNotFoundException {
-        for(byte class_i=0; class_i < class_ids.length; class_i++){
-            if(class_ids[class_i].equals(dataClass)){
-                return new DataClassIndex(class_i);
+    
+    @Override
+    protected long size() {
+        long sizeInBits = 0;
+        sizeInBits += 8; //datasetGroupId
+        sizeInBits += 16; //dataset_Id
+        sizeInBits += 4*8; //version
+        sizeInBits += 1; //multiple_alignment_flag
+        sizeInBits += 1; //byte_offset_size_flag
+        sizeInBits += 1; //non_overlapping_au_range
+        sizeInBits += 1; //pos_40_bits
+        sizeInBits += 1; //block_header_flag
+        if(block_header_flag) {
+            sizeInBits += 1; //MIT_flag
+            sizeInBits += 1; //ClassContiguous
+        } else {
+            sizeInBits += 1; //ordered_blocks_flag
+        }
+        sizeInBits += 16; //seq_count
+        if(seq_ids.length > 0) {
+            sizeInBits += 8; //referenceID
+            sizeInBits += 16 * seq_ids.length;
+            sizeInBits += 32 * seq_blocks.length;
+        }
+        sizeInBits += 4; //datasetType
+        if(mit_flag) {
+            sizeInBits += 4; //num_classes
+            for(int class_i = 0; class_i < class_ids.length; class_i++) {
+                sizeInBits += 4; //class id
+                if(!block_header_flag) {
+                    sizeInBits += 5; //num_descriptors
+                    sizeInBits += 7 * desc_ids[class_i].length; //descriptor ids
+                }
             }
         }
-        throw new DataClassNotFoundException(dataClass);
-    }
-
-    public DATA_CLASS[] getClass_ids() {
-        return class_ids;
-    }
-
-    public void setClass_ids(DATA_CLASS[] class_ids) {
-        this.class_ids = class_ids;
-    }
-
-    public DatasetSequenceIndex getSequenceIndex(SequenceIdentifier sequenceId) throws SequenceNotAvailableException {
-        for(short sequenceIndex = 0; sequenceIndex < seq_ids.length; sequenceIndex++ ){
-            if(seq_ids[sequenceIndex].equals(sequenceId)){
-                return new DatasetSequenceIndex(sequenceIndex);
+        sizeInBits += 8; //alphabetId
+        sizeInBits += 32; //num_u_access_units
+        if(num_u_access_units > 0) {
+            sizeInBits += 32; //num_u_clusters
+            sizeInBits += 31; //multiple_signature_base
+            if(multiple_signature_base > 0) {
+                sizeInBits += 6;
+            }
+            sizeInBits += 1; //u_signature_constant_length
+            if(u_signature_constant_length) {
+                sizeInBits += 8; //u_signature_length
             }
         }
-        throw new SequenceNotAvailableException();
-    }
 
-    public boolean isPos_40_bits(){
-        return pos_40_bits;
-    }
-
-    public boolean isMultipleAlignment() {
-        return multiple_alignment_flag;
-    }
-
-    public long getNumberUAccessUnits() {
-        return num_u_access_units;
-    }
-
-    public void setBlock_header_flag(boolean block_header_flag) {
-        this.block_header_flag = block_header_flag;
-    }
-
-    public DATA_CLASS[] getAlignedClassIds() {
-        DATA_CLASS[] result = new DATA_CLASS[class_ids.length];
-        int copied_i=0;
-        for(int ci=0; ci<result.length; ci++){
-            if(class_ids[ci] != DATA_CLASS.CLASS_U) {
-                result[copied_i] = class_ids[ci];
-                copied_i++;
+        if(seq_ids.length > 0) {
+            int previous_threshold = thresholds[0];
+            sizeInBits += 1; //initial flag
+            sizeInBits += 31; //initial value
+            for(short seq_i = 1; seq_i < getSeqIds().length; seq_i++) {
+                int current_threshold = thresholds[seq_i - 1];
+                sizeInBits += 1; //flag
+                if(current_threshold != previous_threshold) {
+                    sizeInBits += 31;//threshold
+                    previous_threshold = current_threshold;
+                }
             }
         }
-        return Arrays.copyOf(result, copied_i);
-    }
 
-    public void setOrderedBlocks(boolean orderedBlocks){
-        ordered_blocks_flag = orderedBlocks;
+        return (sizeInBits >> 3) + (sizeInBits % 8 != 0 ? 1 : 0);
     }
 }

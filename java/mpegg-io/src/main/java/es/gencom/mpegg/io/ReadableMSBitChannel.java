@@ -74,6 +74,8 @@ public class ReadableMSBitChannel<T extends ReadableByteChannel> implements MPEG
     
     @Override
     public ByteBuffer readByteBuffer(final int size) throws IOException {
+        align();
+        
         final ByteBuffer bb = ByteBuffer.allocate(size);
         while (bb.hasRemaining() && channel.read(bb) >= 0) {}
         position += size;

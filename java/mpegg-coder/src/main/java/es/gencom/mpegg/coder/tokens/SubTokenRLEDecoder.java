@@ -36,10 +36,6 @@ public class SubTokenRLEDecoder implements SubTokenSequenceDecoder{
         this.decoder = decoder;
     }
 
-    private long getValue() throws IOException {
-        return decoder.read();
-    }
-
     @Override
     public boolean hasNext() throws IOException {
         return decoder.hasNext();
@@ -47,6 +43,6 @@ public class SubTokenRLEDecoder implements SubTokenSequenceDecoder{
 
     @Override
     public short getSubTokenUnsignedByte() throws IOException {
-        return (short) getValue();
+        return (short) decoder.read();
     }
 }

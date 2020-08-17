@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -25,29 +25,26 @@
 
 package es.gencom.mpegg.decoder;
 
-import es.gencom.mpegg.coder.quality.AbstractQualityValueParameterSet;
 import es.gencom.mpegg.Record;
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation;
+import es.gencom.mpegg.ReverseCompType;
+import es.gencom.mpegg.SplitType;
+import es.gencom.mpegg.encoder.Operation;
+import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.format.SequenceIdentifier;
 import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.tokens.TokensStructureDecoder;
-import es.gencom.mpegg.decoder.descriptors.S_alphabets;
 import es.gencom.mpegg.decoder.descriptors.streams.*;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
-    private static long auCreationCount = 0;
+public class MappedAccessUnitDecoder implements AbstractAccessUnitDecoder {
 
-    private final long auId;
-
-
-    final private long au_id;
     private final RlenStream rlenStream;
     private final GenomicPosition initialPosition;
-    private GenomicPosition currentPosition;
+    private final byte numberTemplateSegments;
+    private final byte qv_depth;
 
     final protected AbstractSequencesSource sequencesSource;
 
@@ -61,21 +58,22 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
     final private ClipsStream clipsStream;
     final private QualityStream qualityStream;
     final private TokensStructureDecoder readIdentifierDecoder;
+    final private MScoreStream mScoreStream;
+    final private RGroupStream rGroupStream;
 
     final private byte[] changedNucleotides = new byte[]{};
     final private long[] changedPositions = new long[]{};
 
     final private ALPHABET_ID alphabet_id;
 
+    final private DATA_CLASS data_class;
+    final private String[] readGroupNames;
 
-    private byte[] originalBases;
-    private int encodedOriginalBases;
 
     private long readCount;
 
 
-    public MappedAccessUnitDecoder(
-            long au_id,
+    MappedAccessUnitDecoder(
             GenomicPosition genomicPosition,
             PosStream posStream,
             PairStream pairStream,
@@ -87,15 +85,20 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             MMTypeStream mmTypeStream,
             ClipsStream clipsStream,
             QualityStream qualityStream,
+            MScoreStream mScoreStream,
+            RGroupStream rGroupStream,
             AbstractSequencesSource sequencesSource,
             short[][][] tokensReadIdentifiers,
             ALPHABET_ID alphabet_id,
-            AbstractQualityValueParameterSet qualityValueParameterSet
+            DATA_CLASS data_class,
+            String[] readGroupNames,
+            byte numberTemplateSegments,
+            byte qv_depth
     ) {
         this.sequencesSource = sequencesSource;
-        this.au_id = au_id;
+        this.numberTemplateSegments = numberTemplateSegments;
+        this.qv_depth = qv_depth;
         initialPosition = genomicPosition;
-        currentPosition = genomicPosition;
         this.posStream = posStream;
         this.pairStream = pairStream;
         this.mMapStream = mMapStream;
@@ -106,8 +109,12 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         this.mmTypeStream = mmTypeStream;
         this.clipsStream = clipsStream;
         this.qualityStream = qualityStream;
+        this.mScoreStream = mScoreStream;
+        this.rGroupStream = rGroupStream;
+        this.readGroupNames = readGroupNames;
         readCount = 0;
         this.alphabet_id = alphabet_id;
+        this.data_class = data_class;
 
         if(tokensReadIdentifiers == null){
             readIdentifierDecoder = null;
@@ -115,8 +122,6 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             readIdentifierDecoder = new TokensStructureDecoder(tokensReadIdentifiers);
         }
 
-        auId = auCreationCount;
-        auCreationCount++;
     }
 
     @Override
@@ -145,43 +150,68 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                 pairStreamFirstSymbol.isUnpairedRead(),
                 pairStreamFirstSymbol.getNumberOfRecordSegments()
         );
-        long[][] mappingPos = posStream.read(mMapStreamSymbol.getNumberOfSegmentAlignments());
-        PairStreamSymbol pairStreamSymbol = pairStream.readUnknown(
+
+        int numberOfAlignments = mMapStreamSymbol.getNumberOfAlignments();
+        int maxNumberOfSegmentAlignments = mMapStreamSymbol.getMaxNumberOfSegmentAlignments();
+        long[][][] mappingPos = posStream.read(
                 mMapStreamSymbol.getNumberOfSegmentAlignments(),
-                mappingPos,
-                initialPosition.getSequenceId(),
-                pairStreamFirstSymbol.isUnpairedRead(),
-                mMapStreamSymbol.getNumberOfAlignments(),
-                mMapStreamSymbol.getAlignPtr(),
+                maxNumberOfSegmentAlignments
+        );
+        SequenceIdentifier[][] mappingSeqIds = new SequenceIdentifier[maxNumberOfSegmentAlignments][numberTemplateSegments];
+        mappingSeqIds[0][0] = initialPosition.getSequenceId();
+        long[] accessUnitRecord = new long[numberTemplateSegments];
+        long[] recordIndex = new long[numberTemplateSegments];
+        SplitType[][] splitType = new SplitType[maxNumberOfSegmentAlignments][numberTemplateSegments];
+        splitType[0][0] = SplitType.MappedSameRecord;
+
+
+        boolean isRead1First = pairStream.readFirstAlignment(
+            mappingSeqIds,
+            mappingPos,
+            accessUnitRecord,
+            recordIndex,
+            splitType
+        );
+
+        pairStream.readMoreAlignments(
+            mappingSeqIds,
+            mappingPos,
+            splitType,
+            mMapStreamSymbol.getNumberOfSegmentAlignments(),
+            pairStreamFirstSymbol.isUnpairedRead(),
+            numberOfAlignments,
+            mMapStreamSymbol.getAlignPtr()
+        );
+
+        pairStream.readPairSpliced(
                 pairStreamFirstSymbol.getNumberOfAlignedRecordSegments(),
-                rlenStreamSymbol.getSplicedSegLength()
+                mappingPos,
+                rlenStreamSymbol.numberOfSplicedSegments,
+                rlenStreamSymbol.splicedSegLength
         );
-        long[][][] resizedSplicedSegLength = new long[rlenStreamSymbol.getSplicedSegLength().length][1][];
-        for(
-                int segment_i = 0;
-                segment_i < resizedSplicedSegLength.length;
-                segment_i++
-        ){
-            resizedSplicedSegLength[segment_i][0] = rlenStreamSymbol.getSplicedSegLength()[segment_i];
-        }
-        boolean[][][] rCompSymbols = rCompStream.read(
+
+        ReverseCompType[][][] rCompSymbols = rCompStream.read(
+                pairStreamFirstSymbol.getNumberOfAlignedRecordSegments(),
                 mMapStreamSymbol.getNumberOfSegmentAlignments(),
-                resizedSplicedSegLength
+                rlenStreamSymbol.numberOfSplicedSegments,
+                maxNumberOfSegmentAlignments,
+                pairStreamFirstSymbol.getNumberOfRecordSegments(),
+                splitType
         );
+
         int[][] mmOffsets = mPosStream.read(pairStreamFirstSymbol.getNumberOfAlignedRecordSegments());
         int[][] mmTypes = mmTypeStream.readMMType(mmOffsets);
         correctMmOffsetsByType(mmOffsets, mmTypes);
-        int[][][] mmOffsetsPerSlice = correctMmOffsetsBySplices(mmOffsets, rlenStreamSymbol.getSplicedSegLength());
+        int[][][] mmOffsetsPerSlice = correctMmOffsetsBySplices(mmOffsets, rlenStreamSymbol.splicedSegLength);
         int[][][] mmTypesPerSplice = correctMMTypesPerSlice(mmTypes, mmOffsetsPerSlice);
 
-
         SegmentsDecodingResult segmentsDecodingResult =  decode_aligned_segments(
-                rlenStreamSymbol.getSplicedSegLength(),
+                rlenStreamSymbol.splicedSegLength,
                 mmTypesPerSplice,
                 mmOffsetsPerSlice,
                 mmTypeStream,
                 clipsStream.getSoft_clips(),
-                combineMappingPos(mappingPos, pairStreamSymbol.getMateMappingPos()),
+                mappingPos[0],
                 initialPosition.getSequenceId(),
                 sequencesSource,
                 changedNucleotides,
@@ -189,43 +219,56 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                 alphabet_id
         );
 
-        short[][][] qualities = new short[2][1][];
-        qualities[0][0] = qualityStream.getQualitiesAligned(
-                segmentsDecodingResult.getOperations()[0][0],
-                segmentsDecodingResult.getOperationLength()[0][0],
-                mappingPos[0],
-                initialPosition.getPosition()
-        );
-        if(pairStreamFirstSymbol.getNumberOfRecordSegments() == 2){
-            qualities[1][0] = qualityStream.getQualitiesAligned(
-                    segmentsDecodingResult.getOperations()[1][0],
-                    segmentsDecodingResult.getOperationLength()[1][0],
-                    pairStreamSymbol.getMateMappingPos()[0],
-                    initialPosition.getPosition()
-            );
+        short[][][] qualities = new short[pairStreamFirstSymbol.getNumberOfRecordSegments()][qv_depth][];
+        for(int segment_i=0; segment_i < pairStreamFirstSymbol.getNumberOfRecordSegments(); segment_i++) {
+            for(int qvDepth_i=0; qvDepth_i < qv_depth; qvDepth_i++) {
+                qualities[segment_i][qvDepth_i] = qualityStream.getQualitiesAligned(
+                        segmentsDecodingResult.getOperations()[0][segment_i],
+                        segmentsDecodingResult.getOperationLength()[0][segment_i],
+                        mappingPos[0][segment_i],
+                        initialPosition.getPosition()
+                );
+            }
         }
 
+        long[][][] mapping_score = mScoreStream.read(
+                pairStreamFirstSymbol.getNumberOfAlignedRecordSegments(),
+                mMapStreamSymbol.getNumberOfSegmentAlignments(),
+                splitType
+        );
+
+        int rGroupId = rGroupStream.read();
+
+        long[][][] spliceLengths = new long[][][]{rlenStreamSymbol.splicedSegLength};
+
+        byte flags = 0;
         Record result = new Record(
-                readCount,
+                numberTemplateSegments,
+                data_class,
                 readName,
-                "",
-                pairStreamSymbol.isRead_1_first(),
-                pairStreamFirstSymbol.isUnpairedRead(),
-                segmentsDecodingResult.getDecode_sequences(),
+                readGroupNames[rGroupId],
+                isRead1First,
                 qualities,
-                initialPosition.getSequenceId(),
+                segmentsDecodingResult.getDecode_sequences(),
                 mappingPos,
-                pairStreamSymbol.getSplitMate(),
-                pairStreamSymbol.getMateSeqId(),
-                pairStreamSymbol.getMateMappingPos(),
-                resizedSplicedSegLength,
+                mappingSeqIds,
+                accessUnitRecord,
+                recordIndex,
+                splitType,
+                spliceLengths,
                 segmentsDecodingResult.getOperations(),
                 segmentsDecodingResult.getOperationLength(),
                 segmentsDecodingResult.getOriginal_nucleotides(),
                 rCompSymbols,
-                null,
-                mMapStreamSymbol.getAlignPtr()
+                mapping_score,
+                mMapStreamSymbol.getAlignPtr(),
+                mMapStreamSymbol.getNumberOfSegmentAlignments(),
+                flags,
+                mMapStreamSymbol.isMoreAlignments(),
+                mMapStreamSymbol.getMoreAlignmentsNextSeqId(),
+                mMapStreamSymbol.getMoreAlignmentsNextPos()
         );
+
         readCount++;
         return result;
     }
@@ -258,13 +301,32 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         return result;
     }
 
+    /**
+     * Method to decode the aligned segment of a half-mapped record
+     * @param splicedSegLength Array storing the size of each splice (first dimension the segment, second the splice)
+     * @param mmType Matrix storing the types of operation, first dimension is the segment, second is the splice, third
+     *               the mutation index
+     * @param mmOffsets Matrix storing the position of operation, first dimension is the segment, second is the splice,
+     *                  third the mutation index
+     * @param mmTypeStream stream from which mutated nucleotides can be read.
+     * @param softClip Nucleotides conforming the softclips. First dumension is the segment, length of second dimension
+     *                 must be 2 (start and end), third dimension is length of softclip.
+     * @param mappingPos First is the segment, second is the splice
+     * @param sequenceIdentifier Identifier of sequence within the reference to be used
+     * @param sequencesSource Source of reference sequences to use while decoding
+     * @param changedNucleotides to which nucleotides are the reference sequences changed to
+     * @param changedPositions positions at which the sequence is changed
+     * @param alphabet_id identifier of the alphabet used in the access unit
+     * @return the decoded segment
+     * @throws IOException can be caused by multiple error sources.
+     */
     static SegmentsDecodingResult decode_aligned_segments(
             long[][] splicedSegLength,
             int[][][] mmType,
             int[][][] mmOffsets,
             MMTypeStreamInterface mmTypeStream,
             byte[][][] softClip,
-            long[][][] mappingPos,
+            long[][] mappingPos,
             SequenceIdentifier sequenceIdentifier,
             AbstractSequencesSource sequencesSource,
             byte[] changedNucleotides,
@@ -272,17 +334,16 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             ALPHABET_ID alphabet_id) throws IOException {
 
         int numberOfAlignedRecordSegments = mmType.length;
-        byte[][][][] operations = new byte[numberOfAlignedRecordSegments][1][][];
-        int[][][][] operationLength = new int[numberOfAlignedRecordSegments][1][][];
+        byte[][][][] operations = new byte[1][numberOfAlignedRecordSegments][][];
+        int[][][][] operationLength = new int[1][numberOfAlignedRecordSegments][][];
         byte[][][] decode_sequences = new byte[numberOfAlignedRecordSegments][][];
-        byte[][][][] original_nucleotides = new byte[numberOfAlignedRecordSegments][1][][];
-        int[][][] length_original_nucleotides = new int[numberOfAlignedRecordSegments][1][];
+        byte[][][][] original_nucleotides = new byte[1][numberOfAlignedRecordSegments][][];
+        int[][][] length_original_nucleotides = new int[1][numberOfAlignedRecordSegments][];
         
         for(short alignedRecordSegment_i = 0;
                   alignedRecordSegment_i < numberOfAlignedRecordSegments;
                   alignedRecordSegment_i++) {
-
-            decode_sequences[alignedRecordSegment_i] = decode_aligned_segment(
+             SegmentDecodingResult segmentDecodingResult = decode_aligned_segment(
                 splicedSegLength[alignedRecordSegment_i],
                 mmType[alignedRecordSegment_i],
                 mmOffsets[alignedRecordSegment_i],
@@ -293,39 +354,54 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                 sequencesSource,
                 changedNucleotides,
                 changedPositions,
-                alphabet_id,
-                operations[alignedRecordSegment_i],
-                operationLength[alignedRecordSegment_i],
-                original_nucleotides[alignedRecordSegment_i],
-                length_original_nucleotides[alignedRecordSegment_i]);
+                alphabet_id);
+
+            decode_sequences[alignedRecordSegment_i] = segmentDecodingResult.sequence;
+            operations[0][alignedRecordSegment_i] = segmentDecodingResult.operations;
+            operationLength[0][alignedRecordSegment_i] = segmentDecodingResult.operationLength;
+            original_nucleotides[0][alignedRecordSegment_i] = segmentDecodingResult.original_nucleotides;
+
         }
         return new SegmentsDecodingResult(decode_sequences, operations, operationLength, original_nucleotides);
     }
 
-    static byte[][] decode_aligned_segment(
+    /**
+     * Method to decode the aligned segment of a half-mapped record
+     * @param splicedSegLength Array storing the size of each splice
+     * @param mmType Matrix storing the types of operation, first dimension is the splice, second is the mutation index
+     * @param mmOffsets Matrix storing the position of operation, first dimension is the splice, second is the mutation index
+     * @param mmTypeStream stream from which mutated nucleotides can be read.
+     * @param softClip Nucleotides conforming the softclips. Length of first dimension must be 2 (start and end), second
+     *                 dimension is length of softclip.
+     * @param mappingPos The dimension is the splice
+     * @param sequenceIdentifier Identifier of sequence within the reference to be used
+     * @param sequencesSource Source of reference sequences to use while decoding
+     * @param changedNucleotides to which nucleotides are the reference sequences changed to
+     * @param changedPositions positions at which the sequence is changed
+     * @param alphabet_id identifier of the alphabet used in the access unit
+     * @return the decoded segment
+     * @throws IOException can be caused by multiple error sources.
+     */
+    static SegmentDecodingResult decode_aligned_segment(
             long[] splicedSegLength,
             int[][] mmType,
             int[][] mmOffsets,
             MMTypeStreamInterface mmTypeStream,
             byte[][] softClip,
-            long[][] mappingPos,
+            long[] mappingPos,
             SequenceIdentifier sequenceIdentifier,
             AbstractSequencesSource sequencesSource,
             byte[] changedNucleotides,
             long[] changedPositions,
-            ALPHABET_ID alphabet_id,
-            byte[][][] operations,
-            int[][][] operationLength,
-            byte[][][] original_nucleotides,
-            int[][] length_original_nucleotides) throws IOException {
+            ALPHABET_ID alphabet_id) throws IOException {
 
         int numberOfSplices = splicedSegLength.length;
 
-        operations[0] = new byte[numberOfSplices][];
-        operationLength[0] = new int[numberOfSplices][];
+        byte[][] operations = new byte[numberOfSplices][];
+        int[][] operationLength = new int[numberOfSplices][];
         byte[][] decode_sequences = new byte[numberOfSplices][];
-        original_nucleotides[0] = new byte[numberOfSplices][32];
-        length_original_nucleotides[0] = new int[numberOfSplices];
+        byte[][] original_nucleotides = new byte[numberOfSplices][32];
+        int[] length_original_nucleotides = new int[numberOfSplices];
 
         for(
                 int splice_i=0;
@@ -333,14 +409,13 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                 splice_i++
         ){
 
-            long position = mappingPos[0][splice_i];
+            long position = mappingPos[splice_i];
             long mappedLength = splicedSegLength[splice_i];
 
-            operations[0][splice_i] = new byte[128];
-            operationLength[0][splice_i] = new int[128];
+            operations[splice_i] = new byte[128];
+            operationLength[splice_i] = new int[128];
             int numberOperations = 0;
             decode_sequences[splice_i] = new byte[Math.toIntExact(mappedLength)];
-            int decodedPositions = 0;
 
             if(splice_i == 0) {
                 mappedLength -= softClip[0].length;
@@ -364,7 +439,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
             byte[] base_decode = getNucleotidesSequence(
                     position,
                     sizeToRequest,
-                    sequencesSource.getSubsequenceBytes(
+                    sequencesSource.getSubsequence(
                             sequenceIdentifier,
                             Math.toIntExact(position),
                             Math.toIntExact(position + sizeToRequest)
@@ -396,7 +471,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
 
                 if(mmType[splice_i][operation_i] == 0){
                     byte newBase = mmTypeStream.readNewMismatchBase(
-                            S_alphabets.alphabets[alphabet_id.ID],
+                            ALPHABET_ID.ALPHABETS[alphabet_id.ID],
                             base_decode[offset]
                     );
                     byte originalBase = base_decode[offset];
@@ -411,13 +486,13 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                     );
                     addOriginalBaseAutomatic(
                             original_nucleotides,
-                            length_original_nucleotides[0],
+                            length_original_nucleotides,
                             splice_i,
                             originalBase
                     );
                     previousOffset++;
                 }else if(mmType[splice_i][operation_i] == 1){
-                    byte newBase = mmTypeStream.readNewInsertBase(S_alphabets.alphabets[alphabet_id.ID]);
+                    byte newBase = mmTypeStream.readNewInsertBase(ALPHABET_ID.ALPHABETS[alphabet_id.ID]);
                     insertAtPosition(base_decode, newBase, offset);
                     numberOperations = addOperationAutomatic(
                             operations,
@@ -441,7 +516,7 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                     );
                     addOriginalBaseAutomatic(
                             original_nucleotides,
-                            length_original_nucleotides[0],
+                            length_original_nucleotides,
                             splice_i,
                             originalBase
                     );
@@ -495,98 +570,145 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
                 }
             }
 
-            original_nucleotides[0][splice_i] = Arrays.copyOf(
-                    original_nucleotides[0][splice_i],
-                    length_original_nucleotides[0][splice_i]
+            original_nucleotides[splice_i] = Arrays.copyOf(
+                    original_nucleotides[splice_i],
+                    length_original_nucleotides[splice_i]
             );
             decode_sequences[splice_i] = base_decode;
 
-            operations[0][splice_i] = Arrays.copyOf(operations[0][splice_i], numberOperations);
-            operationLength[0][splice_i] = Arrays.copyOf(operationLength[0][splice_i], numberOperations);
+            operations[splice_i] = Arrays.copyOf(operations[splice_i], numberOperations);
+            operationLength[splice_i] = Arrays.copyOf(operationLength[splice_i], numberOperations);
         }
-        return decode_sequences;
+        return new SegmentDecodingResult(
+                decode_sequences,
+                operations,
+                operationLength,
+                original_nucleotides
+        );
     }
 
+    /**
+     * Method to append an original base to a selected splice of the first alignment.
+     * @param original_nucleotides the current lists of decoded nucleotides (first dimension is the splice, second
+     *                             dimension is the length of nucleotides)
+     * @param length_original_nucleotides length of the currently decoded nucleotides, the dimension corresponds to the
+     *                                    number of splices in the first alignment
+     * @param splice_i Index of the splice of the first alignment to which the orignal base must be appended
+     * @param originalBase nucleotide to be appended.
+     */
     private static void addOriginalBaseAutomatic(
-            byte[][][] original_nucleotides,
+            byte[][] original_nucleotides,
             int[] length_original_nucleotides,
             int splice_i,
             byte originalBase
     ) {
-        original_nucleotides[0][splice_i]
+        original_nucleotides[splice_i]
                 [length_original_nucleotides[splice_i]] = originalBase;
         length_original_nucleotides[splice_i]++;
         if(
-                original_nucleotides[0][splice_i].length
+                original_nucleotides[splice_i].length
                         == length_original_nucleotides[splice_i]
         ){
-            original_nucleotides[0][splice_i] = Arrays.copyOf(
-                    original_nucleotides[0][splice_i],
-                    original_nucleotides[0][splice_i].length*2
+            original_nucleotides[splice_i] = Arrays.copyOf(
+                    original_nucleotides[splice_i],
+                    original_nucleotides[splice_i].length*2
             );
         }
 
     }
 
+    /**
+     * Adds operation as first operation in the list of operations for the specified splice
+     * @param operations Current list of operations. First dimension is the splice, the second is the list of operations
+     * @param operationLength Current length of operations. First dimension is the splice, the second is the list of
+     *                        lengths of operations
+     * @param splice_i Splice index for which the operation shall be added.
+     * @param operation Operation to be prepended
+     * @param numberOperations current number of operations
+     * @param length length of the operation to add
+     * @return the new number of operations.
+     */
     private static int prependOperation(
-            final byte[][][] operations,
-            final int[][][] operationLength,
+            final byte[][] operations,
+            final int[][] operationLength,
             final int splice_i,
             final byte operation,
             final int numberOperations,
             final int length) {
 
         System.arraycopy(
-                operations[0][splice_i],
+                operations[splice_i],
                 0,
-                operations[0][splice_i],
+                operations[splice_i],
                 1,
-                operations[0][splice_i].length-1
+                operations[splice_i].length-1
         );
         System.arraycopy(
-                operationLength[0][splice_i],
+                operationLength[splice_i],
                 0,
-                operationLength[0][splice_i],
+                operationLength[splice_i],
                 1,
-                operationLength[0][splice_i].length-1
+                operationLength[splice_i].length-1
         );
-        operations[0][splice_i][0] = operation;
-        operationLength[0][splice_i][0] = length;
+        operations[splice_i][0] = operation;
+        operationLength[splice_i][0] = length;
         return resizeOperationsArrays(operations, operationLength, splice_i, numberOperations);
     }
 
+    /**
+     * Resizes the operations and operationLength arrays, for the indicated splice of the first alignment.
+     * @param operations Current list of operations. First dimension is the alignment (only the first one is used),
+     *                   second is the splice, the third is the list of operations
+     * @param operationLength Current length of operations. First dimension is the splice, the second is the list of
+     *                        lengths of operations
+     * @param splice_i Splice index for which the operation shall be added.
+     * @param numberOperations Past number of operations, i.e. the actual populated size
+     * @return The new number of operations, i.e. past number plus one.
+     */
     private static int resizeOperationsArrays(
-            byte[][][] operations,
-            int[][][] operationLength,
+            byte[][] operations,
+            int[][] operationLength,
             int splice_i,
             int numberOperations
     ) {
         numberOperations++;
-        if(operations[0][splice_i].length == numberOperations){
-            operations[0][splice_i] = Arrays.copyOf(operations[0][splice_i], operations[0][splice_i].length*2);
-            operationLength[0][splice_i] = Arrays.copyOf(
-                    operationLength[0][splice_i], operationLength[0][splice_i].length*2
+        if(operations[splice_i].length == numberOperations){
+            operations[splice_i] = Arrays.copyOf(operations[splice_i], operations[splice_i].length*2);
+            operationLength[splice_i] = Arrays.copyOf(
+                    operationLength[splice_i], operationLength[splice_i].length*2
             );
         }
         return numberOperations;
     }
 
+    /**
+     * Append a new operation to the list operations for the selected splice of the first alignment,
+     * @param operations Current list of operations. First dimension is the alignment (only the first one is used),
+     *                   second is the splice, the third is the list of operations
+     * @param operationLength Current length of operations. First dimension  is the splice, the second is the list
+     *                       of lengths of operations
+     * @param splice_i Splice index for which the operation shall be added.
+     * @param operation Operation to be prepended
+     * @param numberOperations current number of operations
+     * @param length length of the operation to add
+     * @return the new number of operations, i.e. the previous number plus one
+     */
     private static int addOperationAutomatic(
-            final byte[][][] operations,
-            final int[][][] operationLength,
+            final byte[][] operations,
+            final int[][] operationLength,
             final int splice_i,
             final byte operation,
             final int numberOperations,
             final int length) {
 
-        operations[0][splice_i][numberOperations] = operation;
-        operationLength[0][splice_i][numberOperations] = length;
+        operations[splice_i][numberOperations] = operation;
+        operationLength[splice_i][numberOperations] = length;
         return resizeOperationsArrays(operations, operationLength, splice_i, numberOperations);
     }
 
     /**
      *
-     * @param position 0-based initial position of the sequence to retrieve
+     * @param position 0-based position of the first base contained in the nucleotide sequence
      * @param length length of the sequence to retrieve
      * @param nucleotideSequence the base sequence from which to retrieve a subsequence
      * @param changedNucleotides to which nucleotides are the reference sequences changed to
@@ -601,7 +723,6 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         byte[] changedNucleotides,
         long[] changedPositions
     ) throws IOException {
-        int positionCasted = Math.toIntExact(position);
         int lengthCasted = Math.toIntExact(length);
         byte[] result = new byte[lengthCasted];
 
@@ -629,6 +750,11 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         return result;
     }
 
+    /**
+     * Corrects the offsets of mutations based on the previous number of deletions
+     * @param mmOffsets the offset of each mutation. First dimension is the splice index, second is the mutation.
+     * @param mmTypes the type of the mutations. First dimension is the splice index, second is the mutation.
+     */
     static void correctMmOffsetsByType(int[][] mmOffsets, int[][] mmTypes){
         for(
                 int alignedRecordSegment_i=0;
@@ -649,6 +775,11 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         }
     }
 
+    /**
+     * Corrects the offsets of mutations based on the previous number of deletions
+     * @param mmOffsets the offset of each mutation. First dimension is the splice index, second is the mutation.
+     * @param splicedReadsLength the length of each splice. First dimension is the segment, the second is the splice
+     */
     static int[][][] correctMmOffsetsBySplices(
             int[][] mmOffsets,
             long[][] splicedReadsLength
@@ -745,6 +876,12 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         return Arrays.copyOf(array, array.length-1);
     }
 
+    /**
+     * Creates one array by prepending one array to another
+     * @param array base array to work with
+     * @param arrayToPrepend array which has to be prepended
+     * @return a new array with value [arrayToPrepend, array]
+     */
     static byte[] prependToArrays(
             byte[] array,
             byte[] arrayToPrepend
@@ -755,6 +892,12 @@ public class MappedAccessUnitDecoder extends AbstractAccessUnitDecoder {
         return newArray;
     }
 
+    /**
+     * Creates one array by appending one array to another
+     * @param array base array to work with
+     * @param arrayToAppend array which has to be appended
+     * @return a new array with value [array, arrayToAppend]
+     */
     static byte[] appendToArrays(
             byte[] array,
             byte[] arrayToAppend

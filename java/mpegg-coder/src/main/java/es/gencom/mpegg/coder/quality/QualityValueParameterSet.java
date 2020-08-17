@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -25,59 +25,26 @@
 
 package es.gencom.mpegg.coder.quality;
 
-import es.gencom.mpegg.coder.configuration.Parameter_set_qvps_format;
+import es.gencom.mpegg.coder.configuration.QualityValuesParameterSet;
 
 public class QualityValueParameterSet extends AbstractQualityValueParameterSet {
 
-    private static class QualityBook extends AbstractQualityBook{
-        private final short[] entries;
-
-        QualityBook(short[] entries) {
-            this.entries = entries;
-        }
-
-
-        @Override
-        public byte getNumberEntries() {
-            return (byte)entries.length;
-        }
-
-        @Override
-        public short encode(short qualitySAM) {
-            if(qualitySAM < 33 || qualitySAM > 126){
-                throw new IllegalArgumentException();
-            }
-            for(byte index = 1; index<entries.length; index++){
-                if(qualitySAM < entries[index]){
-                    return (byte) (index-1);
-                }
-            }
-            return (byte)(entries.length-1);
-        }
-
-        @Override
-        public short decode(short encodedQuality) {
-            return entries[encodedQuality];
-        }
-    }
-
-
     private final AbstractQualityBook[] qualityBooks;
 
-    public QualityValueParameterSet(Parameter_set_qvps_format parameter_set_qvps_format){
+    public QualityValueParameterSet(QualityValuesParameterSet parameter_set_qvps_format){
         qualityBooks = new AbstractQualityBook[parameter_set_qvps_format.getNumCodebooks()];
         for(byte book_i = 0; book_i < qualityBooks.length; book_i++){
-            qualityBooks[book_i] = new QualityBook(parameter_set_qvps_format.getEntries(book_i));
+            qualityBooks[book_i] = new QualityBookParameterSet(parameter_set_qvps_format.getEntries(book_i));
         }
     }
 
     @Override
     public int getNumberQualityBooks() {
-        return 0;
+        return qualityBooks.length;
     }
 
     @Override
     public AbstractQualityBook getQualityBook(int qualityBookIndex) throws IndexOutOfBoundsException {
-        return null;
+        return qualityBooks[qualityBookIndex];
     }
 }

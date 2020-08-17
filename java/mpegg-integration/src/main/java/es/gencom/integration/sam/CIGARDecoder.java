@@ -12,8 +12,8 @@ public class CIGARDecoder {
     private final int[] operationLength;
 
     public CIGARDecoder(String cigar) {
-        byte[] operationTmp = new byte[1];
-        int[] operationLengthTmp = new int[1];
+        byte[] operationTmp = new byte[0];
+        int[] operationLengthTmp = new int[0];
         final Matcher m = PATTERN.matcher(cigar);
 
         while (m.find()) {

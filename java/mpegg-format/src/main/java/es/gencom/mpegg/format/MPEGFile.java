@@ -31,23 +31,22 @@ import es.gencom.mpegg.io.MPEGWriter;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * <p>
  * ISO/IEC 23092 MPEG-G Data Format container implementation (Part 1).
  * </p>
+ * The class is an extension of the Java ArrayList and contains a list 
+ * of MPEG-G Dataset Groups ("dgcn") along to the MPEG-G Header ("flhd").
  *
  * @author Dmitry Repchevsky &amp; Daniel Naro
  */
 
-public class MPEGFile {
+public class MPEGFile extends ArrayList<DatasetGroupContainer> {
     private MPEGFileHeader fileHeader;
-    private final List<DatasetGroupContainer> datasetGroupContainers;
 
     public MPEGFile() {
         fileHeader = new MPEGFileHeader();
-        datasetGroupContainers = new ArrayList<>();
     }
 
     /**
@@ -57,16 +56,36 @@ public class MPEGFile {
      * 
      * @param fileHeader MPEG-G file header ('flhd')
      */
-    public void setFileHeader(final MPEGFileHeader fileHeader){
+    public void setFileHeader(final MPEGFileHeader fileHeader) {
         this.fileHeader = fileHeader;
     }
 
-    public MPEGFileHeader getFileHeader(){
+    public MPEGFileHeader getFileHeader() {
         return fileHeader;
     }
+    
+    public DatasetGroupContainer getDatasetGroupContainerByIndex(final int idx) {
+        return get(idx);
+    }
 
-    public DatasetGroupContainer getDatasetGroupContainer(int datasetGroupContainer_i){
-        return datasetGroupContainers.get(datasetGroupContainer_i);
+    /**
+     * <p>
+     *  Find a Dataset Group by its dataset group id.
+     * </p>
+     * 
+     * @param dataset_group_id the dataset group id
+     * 
+     * @return the Dataset Group that corresponds to the provided dataset group id 
+     * or null if not found.
+     */
+    public DatasetGroupContainer getDatasetGroupContainerById(final short dataset_group_id) {
+        for (int i = 0, n = size(); i < n; i++) {
+            final DatasetGroupContainer datasetGroupContainer = get(i);
+            if(datasetGroupContainer.getDatasetGroupHeader().getDatasetGroupId() == dataset_group_id){
+                return datasetGroupContainer;
+            }
+        }
+        return null;
     }
 
     /**
@@ -79,46 +98,46 @@ public class MPEGFile {
     public void addDatasetGroupContainer(
             final DatasetGroupContainer datasetGroupContainer) {
 
-        datasetGroupContainers.add(datasetGroupContainer);
+        add(datasetGroupContainer);
     }
 
     public void read(final MPEGReader mpegReader) 
-            throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException, InvalidMPEGGFileException {
+            throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException, InvalidMPEGGFileException {
 
         GenInfo.Header header = GenInfo.Header.read(mpegReader);
 
         if(!header.key.equals(MPEGFileHeader.KEY)){
-            throw new InvalidMPEGStructure("File is missing mandatory file header.");
+            throw new InvalidMPEGStructureException("File is missing mandatory file header.");
         }
 
         fileHeader = new MPEGFileHeader();
         fileHeader.read(mpegReader, header.getContentSize());
 
         header = GenInfo.Header.read(mpegReader);
-        if(! header.key.equals(DatasetGroupContainer.KEY)){
-            throw new InvalidMPEGStructure("File is missing mandatory dataset group container.");
+        if(!header.key.equals(DatasetGroupContainer.KEY)) {
+            throw new InvalidMPEGStructureException("File is missing mandatory dataset group container.");
         }
-        while(header.key.equals(DatasetGroupContainer.KEY)){
+        while(header.key.equals(DatasetGroupContainer.KEY)) {
             DatasetGroupContainer datasetGroupContainer = new DatasetGroupContainer();
             datasetGroupContainer.read(mpegReader, header.getContentSize());
-            datasetGroupContainers.add(datasetGroupContainer);
-            try{
+            add(datasetGroupContainer);
+            try {
                 header = GenInfo.Header.read(mpegReader);
-            }catch (EOFException e){
+            } catch (EOFException e) {
                 return;
             }
         }
     }
 
     public void write(final MPEGWriter writer)
-            throws InvalidMPEGStructure, IOException {
+            throws InvalidMPEGStructureException, IOException {
         
         if(fileHeader == null){
-            throw new InvalidMPEGStructure("Missing mandatory file header.");
+            throw new InvalidMPEGStructureException("Missing mandatory file header.");
         }
         fileHeader.writeWithHeader(writer);
-        for(DatasetGroupContainer datasetGroupContainer : datasetGroupContainers){
-            datasetGroupContainer.writeWithHeader(writer);
+        for (int i = 0, n = size(); i < n; i++) {
+            get(i).writeWithHeader(writer);
         }
     }
 }

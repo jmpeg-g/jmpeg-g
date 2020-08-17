@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -26,19 +26,13 @@
 package es.gencom.mpegg.decoder.descriptors.streams;
 
 public class RlenStreamSymbol {
-    private final long[] read_len;
-    private final long[][] splicedSegLength;
+    public final long[] read_len;
+    public final long[][] splicedSegLength;
+    public final int[] numberOfSplicedSegments;
 
-    RlenStreamSymbol(long[] read_len, long[][] splicedSegLength) {
+    RlenStreamSymbol(long[] read_len, long[][] splicedSegLength, int[] numberOfSplicedSegments) {
         this.read_len = read_len;
         this.splicedSegLength = splicedSegLength;
-    }
-
-    public long[] getRead_len() {
-        return read_len;
-    }
-
-    public long[][] getSplicedSegLength() {
-        return splicedSegLength;
+        this.numberOfSplicedSegments = numberOfSplicedSegments;
     }
 }

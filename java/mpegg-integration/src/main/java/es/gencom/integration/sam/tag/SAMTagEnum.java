@@ -89,6 +89,9 @@ public enum SAMTagEnum {
                                      }
                                      return decode(tag, val_type, ui);
                        }
+            case 'A' : final char value = (char) buf.get();
+                        return new AnySAMTag(tag, 'A', value);
+
         }
         
         return null;

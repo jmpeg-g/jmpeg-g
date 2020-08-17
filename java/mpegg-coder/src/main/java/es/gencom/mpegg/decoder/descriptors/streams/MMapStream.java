@@ -31,7 +31,7 @@ import es.gencom.mpegg.format.SequenceIdentifier;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -41,12 +41,12 @@ import static es.gencom.mpegg.decoder.descriptors.streams.StreamsConstantsParams
 
 public class MMapStream {
     private final DATA_CLASS dataClass;
-    private final DescriptorDecoder decoders[];
+    private final DescriptorDecoder[] decoders;
     private final boolean multiple_alignment_flag;
 
     public MMapStream(
             final DATA_CLASS dataClass, 
-            final DataUnitAccessUnit.Block block,
+            final AccessUnitBlock block,
             final boolean multiple_alignment_flag,
             final EncodingParameters encodingParameters) {
 
@@ -81,11 +81,11 @@ public class MMapStream {
             long numberOfRecordSegments
     ) throws IOException {
         int[] numberOfSegmentAlignments = new int[MAX_NUM_TEMPLATE_SEGMENTS];
-        int numberOfAlignments = 0;
-        boolean moreAlignments = false;
+        int numberOfAlignments;
+
         SequenceIdentifier moreAlignmentsNextSeqId = null;
         long moreAlignmentsNextPos = 0;
-        long[] numberOfAlignmentsPairs = null;
+        int[] numberOfAlignmentsPairs = null;
         int[][] alignPtr = null;
 
         if(dataClass != DATA_CLASS.CLASS_U){
@@ -94,39 +94,36 @@ public class MMapStream {
             } else {
                 numberOfSegmentAlignments[0] = Math.toIntExact(decoders[0].read());
             }
-        } else {
-            numberOfSegmentAlignments[0] = 0;
         }
+
+        boolean moreAlignments = false;
 
 
         if(unpairedRead || dataClass == DATA_CLASS.CLASS_HM){
-            numberOfAlignments = Math.toIntExact(numberOfSegmentAlignments[0]);
+            numberOfAlignments = numberOfSegmentAlignments[0];
             alignPtr = new int[numberOfAlignments][2];
 
             for(int alignment_i = 0; alignment_i < numberOfAlignments; alignment_i++){
                 alignPtr[alignment_i][0] = alignment_i;
             }
         } else if (dataClass == DATA_CLASS.CLASS_U){
-            if(numberOfRecordSegments > 1){
-                numberOfSegmentAlignments[1] = 0;
-            }
             numberOfAlignments = 0;
         } else {
-            numberOfAlignmentsPairs = new long[Math.toIntExact(numberOfSegmentAlignments[0])];
+            numberOfAlignmentsPairs = new int[numberOfSegmentAlignments[0]];
             numberOfSegmentAlignments[1] = 0;
             alignPtr = new int[1024][];
-            int numberAlignPtr = 0;
+            numberOfAlignments = 0;
 
-            for(long segmentAlignment_i=0; segmentAlignment_i < numberOfSegmentAlignments[0]; segmentAlignment_i++){
+            for(int segmentAlignment_i=0; segmentAlignment_i < numberOfSegmentAlignments[0]; segmentAlignment_i++){
                 if(!multiple_alignment_flag){
-                    numberOfAlignmentsPairs[Math.toIntExact(segmentAlignment_i)] = 1;
+                    numberOfAlignmentsPairs[segmentAlignment_i] = 1;
                 } else {
-                    numberOfAlignmentsPairs[Math.toIntExact(segmentAlignment_i)] = decoders[0].read();
+                    numberOfAlignmentsPairs[segmentAlignment_i] = Math.toIntExact(decoders[0].read());
                 }
 
                 for(
                         long alignmentPair_i=0;
-                        alignmentPair_i < numberOfAlignmentsPairs[Math.toIntExact(segmentAlignment_i)];
+                        alignmentPair_i < numberOfAlignmentsPairs[segmentAlignment_i];
                         alignmentPair_i++
                 ){
                     int ptr;
@@ -135,20 +132,19 @@ public class MMapStream {
                     } else {
                         ptr = 0;
                     }
-                    alignPtr[numberAlignPtr] = new int[2];
-                    alignPtr[numberAlignPtr][0] = Math.toIntExact(segmentAlignment_i);
-                    alignPtr[numberAlignPtr][1] = numberOfSegmentAlignments[1] - ptr;
+                    alignPtr[numberOfAlignments] = new int[2];
+                    alignPtr[numberOfAlignments][0] = segmentAlignment_i;
+                    alignPtr[numberOfAlignments][1] = numberOfSegmentAlignments[1] - ptr;
 
                     if (ptr == 0){
                         numberOfSegmentAlignments[1]++;
                     }
-                    numberAlignPtr++;
-                    if(alignPtr.length == numberAlignPtr){
+                    numberOfAlignments++;
+                    if(alignPtr.length == numberOfAlignments){
                         alignPtr = Arrays.copyOf(alignPtr, alignPtr.length*2);
                     }
                 }
             }
-            numberOfAlignments = numberAlignPtr;
             alignPtr = Arrays.copyOf(alignPtr, numberOfAlignments);
         }
 

@@ -32,7 +32,7 @@ import java.io.IOException;
 /**
  * <p>
  * Hash functions used to verify the integrity of the reference sequences 
- * (ISO/IEC DIS 23092-1 6.4.1.2.5 Checksum).
+ * (ISO/IEC DIS 23092-1 6.5.1.3.7 Checksum).
  * </p>
  * 
  * @author Dmitry Repchevsky &amp; Daniel Naro

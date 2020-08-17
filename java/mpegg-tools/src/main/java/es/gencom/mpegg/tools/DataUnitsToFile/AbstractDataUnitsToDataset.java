@@ -1,11 +1,12 @@
 package es.gencom.mpegg.tools.DataUnitsToFile;
 
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
 import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnits;
 import es.gencom.mpegg.tools.DataUnitsIndexation;
 
 import java.io.IOException;
@@ -169,16 +170,12 @@ public abstract class AbstractDataUnitsToDataset {
         long[] maxAUId = new long[numberSequences];
         Arrays.fill(maxAUId, -1);
 
-        for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
-            if(dataUnitAccessUnit.getAUType() == DATA_CLASS.CLASS_U){
-                continue;
+        for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()) {
+            if(dataUnitAccessUnit.getAUType() != DATA_CLASS.CLASS_U) {
+                maxAUId[dataUnitAccessUnit.getSequenceId().getSequenceIdentifier()] =
+                    Long.max(maxAUId[dataUnitAccessUnit.getSequenceId().getSequenceIdentifier()],
+                             dataUnitAccessUnit.header.access_unit_id);
             }
-
-            maxAUId[dataUnitAccessUnit.getSequenceId().getSequenceIdentifier()] =
-                    Long.max(
-                            maxAUId[dataUnitAccessUnit.getSequenceId().getSequenceIdentifier()],
-                            dataUnitAccessUnit.getHeader().getAccess_unit_ID()
-                    );
         }
 
         long[] numberAccessUnits = new long[numberSequences];
@@ -224,8 +221,8 @@ public abstract class AbstractDataUnitsToDataset {
         }
 
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
-            for(DataUnitAccessUnit.Block block : dataUnitAccessUnit.getBlocks()){
-                hasDescriptor[dataClassIndex[dataUnitAccessUnit.getAUType().ID-1]][block.getDescriptorId()] = true;
+            for(AccessUnitBlock block : dataUnitAccessUnit.getBlocks()){
+                hasDescriptor[dataClassIndex[dataUnitAccessUnit.getAUType().ID-1]][block.descriptor_id.ID] = true;
             }
         }
 
@@ -291,7 +288,7 @@ public abstract class AbstractDataUnitsToDataset {
             boolean use40BitsPositions,
             short referenceId,
             int default_threshold,
-            Alphabet alphabet) throws IOException, DataFormatException;
+            ALPHABET alphabet) throws IOException, DataFormatException;
 
     AbstractDataUnitsToDataset(){
         indexationInfos = new TreeMap<>();

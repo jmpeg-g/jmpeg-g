@@ -158,9 +158,9 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
 
 
     @Override
-    public void write(MPEGWriter writer) throws IOException, InvalidMPEGStructure {
+    public void write(MPEGWriter writer) throws IOException, InvalidMPEGStructureException {
         if(dataset_header == null){
-            throw new InvalidMPEGStructure("Missing mandatory dataset header element.");
+            throw new InvalidMPEGStructureException("Missing mandatory dataset header element.");
         }
         dataset_header.writeWithHeader(writer);
         for(DatasetParameterSet datasetParameterSet : dataset_parameters){
@@ -168,7 +168,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
         }
         if(dataset_header.isMIT()) {
             if (masterIndexTable == null) {
-                throw new InvalidMPEGStructure("Missing mandatory master index table.");
+                throw new InvalidMPEGStructureException("Missing mandatory master index table.");
             }
             masterIndexTable.writeWithHeader(writer);
         }
@@ -178,7 +178,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
             accessUnitContainer.writeWithHeader(writer);
         }
 
-        if(!dataset_header.isBlockHeader()){
+        if(!dataset_header.isBlockHeaderFlag()){
             for(List<DescriptorStreamContainer> streamContainerInClass : descriptorStreamContainers){
                 for(DescriptorStreamContainer streamContainer : streamContainerInClass) {
                     streamContainer.writeWithHeader(writer);
@@ -197,7 +197,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
     @Override
     public DatasetContainer read(
             final MPEGReader reader, final long size) 
-            throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException, InvalidMPEGGFileException {
+            throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException, InvalidMPEGGFileException {
 
         long datasetInitialPosition = reader.getPosition();
 
@@ -207,14 +207,14 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
 
         Header header = Header.read(reader);
         if(!header.key.equals(DatasetHeader.KEY)){
-            throw new InvalidMPEGStructure("Dataset container is missing mandatory dataset header.");
+            throw new InvalidMPEGStructureException("Dataset container is missing mandatory dataset header.");
         }
 
         dataset_header = new DatasetHeader().read(reader, header.getContentSize());
 
         unalignedAccessUnitContainer = new AccessUnitContainer[(int)dataset_header.getNumberUAccessUnits()];
 
-        if(!dataset_header.isBlockHeader()) {
+        if(!dataset_header.isBlockHeaderFlag()) {
             descriptorStreamContainers = new ArrayList<>(DATA_CLASS.values().length);
             for (DATA_CLASS dataClass : DATA_CLASS.values()) {
                 try {
@@ -246,7 +246,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
         long auContainerOffset = reader.getPosition();
 
         while (header.key.equals(AccessUnitContainer.KEY)){
-            AccessUnitContainer accessUnitContainer = new AccessUnitContainer(this);
+            AccessUnitContainer accessUnitContainer = new AccessUnitContainer(dataset_header);
 
             accessUnitContainer.read(reader, header.getContentSize());
             accessUnitContainer.setAccessUnitOffset(auContainerOffset);
@@ -264,6 +264,20 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
                                         accessUnitContainer.getAccessUnitHeader(),
                                         readerPosition - 12
                                 );
+                        accessUnitContainer.getAccessUnitHeader().setAUStartPosition(
+                                masterIndexTable.getAuStart(
+                                        auIdTriplet.getSeq(),
+                                        auIdTriplet.getClass_i(),
+                                        (int)auIdTriplet.getAuId()
+                                )
+                        );
+                        accessUnitContainer.getAccessUnitHeader().setAUEndPosition(
+                                masterIndexTable.getAuEnd(
+                                        auIdTriplet.getSeq(),
+                                        auIdTriplet.getClass_i(),
+                                        (int)auIdTriplet.getAuId()
+                                )
+                        );
                     }
                 } catch (DataClassNotFoundException e) {
                     throw new InvalidMPEGGFileException("Data class not found.", e);
@@ -298,9 +312,9 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
             }
         }
 
-        if(!dataset_header.isBlockHeader()){
+        if(!dataset_header.isBlockHeaderFlag()){
             if (!header.key.equals(DescriptorStreamContainer.KEY)){
-                throw new InvalidMPEGStructure("Dataset container is missing mandatory descriptor stream.");
+                throw new InvalidMPEGStructureException("Dataset container is missing mandatory descriptor stream.");
             }
 
             while(header.key.equals(DescriptorStreamContainer.KEY)) {
@@ -408,7 +422,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
             result += accessUnitContainer.sizeWithHeader();
         }
 
-        if(dataset_header!= null && !dataset_header.isBlockHeader()){
+        if(dataset_header!= null && !dataset_header.isBlockHeaderFlag()){
             for(List<DescriptorStreamContainer> streamContainerInClass : descriptorStreamContainers){
                 for(DescriptorStreamContainer streamContainer : streamContainerInClass) {
                     if(streamContainer != null) {
@@ -454,7 +468,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
     public void addDescriptorStream(DescriptorStreamContainer descriptorStreamContainer) throws DataClassNotFoundException {
         if(descriptorStreamContainers.size() == 0){
             descriptorStreamContainers = new ArrayList<>(DATA_CLASS.values().length);
-            for(DATA_CLASS class_id : dataset_header.getClass_ids()){
+            for(DATA_CLASS class_id : dataset_header.getClassIDs()){
                 int numberDescriptors = dataset_header.getNumberOfDescriptors(class_id);
                 List<DescriptorStreamContainer> descriptorsForClass = new ArrayList<>(numberDescriptors);
                 for(int i=0; i<numberDescriptors; i++){
@@ -517,7 +531,7 @@ public class DatasetContainer extends GenInfo<DatasetContainer> {
             if(
                     datasetGroupContainer
                             .getReference(referenceId)
-                            .getSequence_name(sequenceIdentifier)
+                            .getSequenceName(sequenceIdentifier)
                             .equals(sequenceName)
             ){
                 return sequenceIndex;

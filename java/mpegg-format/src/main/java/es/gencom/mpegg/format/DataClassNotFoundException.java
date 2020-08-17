@@ -25,7 +25,9 @@
 
 package es.gencom.mpegg.format;
 
-public class DataClassNotFoundException extends Exception{
+import java.io.IOException;
+
+public class DataClassNotFoundException extends IOException {
     private final DATA_CLASS dataClass;
 
     public DataClassNotFoundException(DATA_CLASS dataClass) {

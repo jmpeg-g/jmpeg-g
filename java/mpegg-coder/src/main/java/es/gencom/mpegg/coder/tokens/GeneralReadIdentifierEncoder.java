@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -26,18 +26,15 @@
 package es.gencom.mpegg.coder.tokens;
 
 import java.util.Arrays;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder {
-    final static Pattern PATTERN = Pattern.compile("([a-zA-Z0-9_]*)([:,.;/]{0,1})");
-    final static byte[] DELIMITERS = new byte[]{':',',','.',';','/','#','_'};
+    private final static byte[] DELIMITERS = new byte[]{':',',','.',';','/','#','_'};
 
     public GeneralReadIdentifierEncoder(){
         this(false);
     }
 
-    GeneralReadIdentifierEncoder(boolean greedy) {
+    private GeneralReadIdentifierEncoder(boolean greedy) {
         super(greedy);
     }
 
@@ -86,7 +83,12 @@ public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder 
         encode(tokensList);
     }
 
-    static boolean isDelimiter(byte value){
+    /**
+     * Test whether a character has been marked as a delimiter
+     * @param value character which has to be checked
+     * @return whether the character is a delimiter
+     */
+    private static boolean isDelimiter(byte value){
         boolean isDelimiter = false;
         for(int delimiter_i=0; delimiter_i < DELIMITERS.length; delimiter_i++){
             if(value == DELIMITERS[delimiter_i]){
@@ -97,10 +99,21 @@ public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder 
         return isDelimiter;
     }
 
-    static boolean isDigit(byte value){
+    /**
+     * Test whether a character is a digit
+     * @param value character which has to be checked
+     * @return whether the character is a digit
+     */
+    private static boolean isDigit(byte value){
         return value >= '0' && value <= '9';
     }
 
+    /**
+     * Marks the beginning of each division within the submitted string.
+     * @param bytesInput the string to break down in subdivision
+     * @return an array of positions within the string, each position correspond to a new division in the string.
+     * Subdivisions are delimited by the delimiters.
+     */
     static int[] breakDownIdentifier(byte[] bytesInput){
         boolean isNumber = false;
         boolean multiPositionToken = false;
@@ -115,8 +128,7 @@ public class GeneralReadIdentifierEncoder extends AbstractReadIdentifierEncoder 
                 numMarks++;
             } else {
                 if(
-                    bytesInput[i] >= '0'
-                    && bytesInput[i] <= '9'
+                    isDigit(bytesInput[i])
                 ){
                     if(!multiPositionToken){
                         marks[numMarks] = i;

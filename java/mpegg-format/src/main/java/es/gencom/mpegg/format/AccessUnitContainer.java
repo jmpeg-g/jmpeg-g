@@ -36,8 +36,7 @@ import java.util.List;
 public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
     public final static String KEY = "aucn";
 
-    private final DatasetContainer datasetContainer;
-    private final DatasetHeader datasetHeader;
+    private final DatasetHeader dataset_header;
     private AccessUnitHeader access_unit_header;
     private List<Block> blocks;
     private AccessUnitInformation au_information;
@@ -47,20 +46,18 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
     private Long au_offset = null;
 
     public AccessUnitContainer(
-            final DatasetContainer datasetContainer,
+            final DatasetHeader dataset_header,
             final AccessUnitHeader access_unit_header) {
         
         super(KEY);
 
-        this.datasetContainer = datasetContainer;
-        this.datasetHeader = datasetContainer.getDatasetHeader();
+        this.dataset_header = dataset_header;
         this.access_unit_header = access_unit_header;
         blocks = new ArrayList<>();
     }
 
-    public AccessUnitContainer(final DatasetContainer datasetContainer) {
-        this(datasetContainer, 
-             new AccessUnitHeader(datasetContainer.getDatasetHeader()));
+    public AccessUnitContainer(final DatasetHeader dataset_header) {
+        this(dataset_header, new AccessUnitHeader(dataset_header));
     }
 
     public AccessUnitInformation getAccessUnitInformation() {
@@ -81,7 +78,7 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
 
     public void setBlocks(final List<Block> blocks) {
         this.blocks = blocks;
-        access_unit_header.setNumBlocks((byte) blocks.size());
+        access_unit_header.setNumberOfBlocks((byte) blocks.size());
     }
 
     public void addBlock(final Block block) {
@@ -90,10 +87,6 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
 
     public List<Block> getBlocks() {
         return blocks;
-    }
-
-    public DatasetParameterSet getParameterSet() {
-        return datasetContainer.getDatasetParameterSet(access_unit_header.getParameterSetID());
     }
 
     public long getAccessUnitOffset() {
@@ -108,7 +101,7 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
     public long size(){
         long result = 0;
         result += access_unit_header.sizeWithHeader();
-        if(datasetHeader.isBlockHeader()){
+        if(dataset_header.isBlockHeaderFlag()) {
             for(Block block : blocks){
                 result += block.size();
             }
@@ -124,10 +117,10 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
 
     @Override
     public void write(final MPEGWriter writer) 
-            throws IOException, InvalidMPEGStructure {
+            throws IOException, InvalidMPEGStructureException {
 
         access_unit_header.writeWithHeader(writer);
-        if(datasetHeader.isBlockHeader()){
+        if(dataset_header.isBlockHeaderFlag() ){
             if(blocks.size() != access_unit_header.getNumberOfBlocks()){
                 //todo add check
             }
@@ -147,13 +140,13 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
 
     @Override
     public AccessUnitContainer read(final MPEGReader reader, final long size) 
-            throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException {
+            throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException {
 
         Header header = Header.read(reader);
         if(AccessUnitHeader.KEY.equals(header.key)) {
             access_unit_header.read(reader, header.getContentSize());
         } else {
-            throw new InvalidMPEGStructure("Access unit container misses the mandatory access unit header element.");
+            throw new InvalidMPEGStructureException("Access unit container misses the mandatory access unit header element.");
         }
 
         final long remainingBytes = size - access_unit_header.sizeWithHeader();
@@ -186,9 +179,9 @@ public class AccessUnitContainer extends GenInfo<AccessUnitContainer>{
                 possibleBlock = copyPossibleProtectionPossibleBlock;
             }
 
-            if (datasetHeader.isBlockHeader()) {
+            if (dataset_header.isBlockHeaderFlag()) {
                 for (byte block_i = 0; block_i < access_unit_header.getNumberOfBlocks(); block_i++) {
-                    Block block = new Block(datasetHeader);
+                    Block block = new Block(dataset_header);
                     block.read(possibleBlock);
                     blocks.add(block);
                 }

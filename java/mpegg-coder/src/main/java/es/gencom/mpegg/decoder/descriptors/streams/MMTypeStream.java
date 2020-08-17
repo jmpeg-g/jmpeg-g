@@ -25,13 +25,13 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
+import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
-import es.gencom.mpegg.decoder.descriptors.S_alphabets;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class MMTypeStream implements MMTypeStreamInterface{
 
     public MMTypeStream(
             final DATA_CLASS dataClass, 
-            final DataUnitAccessUnit.Block block, 
+            final AccessUnitBlock block, 
             final EncodingParameters encodingParameters) {
 
         this.dataClass = dataClass;
@@ -114,9 +114,14 @@ public class MMTypeStream implements MMTypeStreamInterface{
             return 'N';
         }
 
-        externalDataProvider.symbol = S_alphabets.charToId(s_alphabet_id, Character.toUpperCase((char)originalCharacter));
+        externalDataProvider.symbol = ALPHABET_ID.charToId(s_alphabet_id, Character.toUpperCase((char)originalCharacter));
         
-        int index = (int) decoders[1].read();
+        int index;
+        try{
+            index = (int) decoders[1].read();
+        } catch (ArrayIndexOutOfBoundsException e){
+            throw e;
+        }
         byte newBase = s_alphabet_id[index];
         j4_1++;
         j4_0++;

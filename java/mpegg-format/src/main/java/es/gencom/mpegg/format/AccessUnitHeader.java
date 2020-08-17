@@ -43,22 +43,22 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
     
     public final DatasetHeader header;
     
-    private int access_unit_id;             // u(32)
-    private byte num_blocks;                // u(8)
-    private short parameter_set_id;         // u(12)
-    private DATA_CLASS au_type;              // u(4)
-    private int reads_count;                // u(32)
-    private short mm_threshold;             // u(16)
-    private int mm_count;                   // u(32)
+    private int access_unit_id;                 // u(32)
+    private byte num_blocks;                    // u(8)
+    private short parameter_set_id;             // u(12)
+    private DATA_CLASS au_type;                 // u(4)
+    private int reads_count;                    // u(32)
+    private short mm_threshold;                 // u(16)
+    private int mm_count;                       // u(32)
     private SequenceIdentifier ref_sequence_id;
     private long ref_start_position;
     private long ref_end_position;
-    private byte reference_id;               // u(8)
-    private SequenceIdentifier sequence_id;  // u(16)
-    private long au_start_position;          // u(32) or u(40)
-    private long au_end_position;            // u(32) or u(40)
-    private long extended_au_start_position; // u(32) or u(40)
-    private long extended_au_end_position;   // u(32) or u(40)
+    private byte reference_id;                  // u(8)
+    private SequenceIdentifier sequence_id;     // u(16)
+    private long au_start_position;             // u(32) or u(40)
+    private long au_end_position;               // u(32) or u(40)
+    private long extended_au_start_position;    // u(32) or u(40)
+    private long extended_au_end_position;      // u(32) or u(40)
     private int[] u_cluster_signatures;
     
     public AccessUnitHeader(final DatasetHeader header) {
@@ -166,16 +166,12 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
         return num_blocks;
     }
 
+    public void setNumberOfBlocks(final byte num_blocks) {
+        this.num_blocks = num_blocks;
+    }
+
     public int getAccessUnitID() {
         return access_unit_id;
-    }
-
-    public byte getNumBlocks() {
-        return num_blocks;
-    }
-
-    public void setNumBlocks(final byte num_blocks) {
-        this.num_blocks = num_blocks;
     }
 
     public short getParameterSetID() {
@@ -254,11 +250,18 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
         return extended_au_start_position;
     }
 
-
+    public void setExtendedAUStartPosition(final long extended_au_start_position) {
+        this.extended_au_start_position = extended_au_start_position;
+    }
+    
     public long getExtendedAUEndPosition() {
         return extended_au_end_position;
     }
 
+    public void setExtendedAUEndPosition(final long extended_au_end_position) {
+        this.extended_au_end_position = extended_au_end_position;
+    }
+    
     public int[] getUClusterSignatures() {
         return u_cluster_signatures;
     }
@@ -296,7 +299,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
             result += 32; //mm_count
         }
 
-        final byte pos_size = (byte)(header.isPos_40_bits() ? 40 : 32);
+        final byte pos_size = (byte)(header.isPos40bits() ? 40 : 32);
 
         if (header.getDatasetType() == DatasetType.REFERENCE){
             result += 16;
@@ -346,7 +349,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
                 writer.writeBits(mm_count, 32);
         }
 
-        final byte pos_size = (byte)(header.isPos_40_bits() ? 40 : 32);
+        final byte pos_size = (byte)(header.isPos40bits() ? 40 : 32);
 
         if(header.getDatasetType() == DatasetType.REFERENCE){
             writer.writeShort((short)ref_sequence_id.getSequenceIdentifier());
@@ -359,7 +362,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
             if (au_type != DATA_CLASS.CLASS_U) {
                 writer.writeBits(sequence_id.getSequenceIdentifier(), 16);
 
-                byte posSize = (byte)(header.isPos_40_bits() ? 40 : 32);
+                byte posSize = (byte)(header.isPos40bits() ? 40 : 32);
 
                 writer.writeBits(au_start_position, posSize);
                 writer.writeBits(au_end_position, posSize);
@@ -404,7 +407,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
                 mm_count = (int)reader.readBits(32);
         }
 
-        final byte pos_size = (byte)(header.isPos_40_bits() ? 40 : 32);
+        final byte pos_size = (byte)(header.isPos40bits() ? 40 : 32);
         if(header.getDatasetType() == DatasetType.REFERENCE){
             ref_sequence_id = new SequenceIdentifier(reader.readUnsignedShort());
             ref_start_position = reader.readBits(pos_size);
@@ -416,7 +419,7 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
 
             if (au_type != DATA_CLASS.CLASS_U) {
                 sequence_id = new SequenceIdentifier((short) reader.readBits(16));
-                byte posSize = (byte)(header.isPos_40_bits() ? 40 : 32);
+                byte posSize = (byte)(header.isPos40bits() ? 40 : 32);
                 au_start_position = (int) reader.readBits(posSize);
                 au_end_position = (int) reader.readBits(posSize);
 
@@ -469,7 +472,4 @@ public class AccessUnitHeader extends GenInfo<AccessUnitHeader> {
         return new AccessUnitHeader(dataset_header).read(new MSBitBuffer(buf), header.length - Header.SIZE);
     }
 
-    public void setU_cluster_signatures(int[] u_cluster_signatures) {
-        this.u_cluster_signatures = u_cluster_signatures;
-    }
 }

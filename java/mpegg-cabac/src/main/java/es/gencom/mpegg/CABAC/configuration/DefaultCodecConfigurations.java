@@ -548,7 +548,7 @@ public class DefaultCodecConfigurations {
                          numCtxSubsym = 6;       // TU ( = numAlphabetSymbols - 1 )
                          numCtxLuts = numCtxSubsym;
                          break;
-            case RGROUP: coding_order = 0;
+            case RGROUP: coding_order = 1;
                          output_symbol_size = 8;
                          coding_subsym_size = 8;
                          numAlphabetSymbols = 256;

@@ -4,9 +4,7 @@ import es.gencom.integration.fasta.FastaFileReader;
 import es.gencom.integration.fasta.FastaSequence;
 import es.gencom.mpegg.format.ChecksumAlgorithm;
 import es.gencom.mpegg.format.DatasetGroupContainer;
-import es.gencom.mpegg.format.ref.AbstractLocation;
-import es.gencom.mpegg.format.ref.ExternalLocation;
-import es.gencom.mpegg.format.ref.REFERENCE_TYPE;
+import es.gencom.mpegg.format.ref.RAW_Reference;
 import es.gencom.mpegg.format.ref.Reference;
 
 import java.io.IOException;
@@ -16,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class FASTAToRawReferenceReference {
+
     public static Reference generate(
             DatasetGroupContainer datasetGroupContainer,
             Path inputFastaPath,
@@ -24,8 +23,19 @@ public class FASTAToRawReferenceReference {
             short reference_minor_version,
             short reference_patch_version,
             String reportedPath,
-            ChecksumAlgorithm checksumAlgorithm
-    ) throws IOException {
+            ChecksumAlgorithm checksumAlgorithm) throws IOException {
+
+        MessageDigest md;
+        try {
+            if (checksumAlgorithm == ChecksumAlgorithm.MD5) {
+                md = MessageDigest.getInstance("MD5");
+            } else {
+                md = MessageDigest.getInstance("SHA-256");
+            }
+        } catch (NoSuchAlgorithmException e){
+            throw new UnsupportedOperationException(e);
+        }
+            
         FastaFileReader fastaReader = new FastaFileReader(inputFastaPath);
 
         byte maxAllocatedReferenceId = -1;
@@ -40,20 +50,9 @@ public class FASTAToRawReferenceReference {
         String[] sequence_names = new String[23];
         byte[][] checksums = new byte[23][];
 
-
         for(FastaSequence fastaSequence : fastaReader){
             sequence_names[numberSequences] = fastaSequence.getSequenceName();
 
-            MessageDigest md;
-            try {
-                if (checksumAlgorithm == ChecksumAlgorithm.MD5) {
-                    md = MessageDigest.getInstance("MD5");
-                } else {
-                    md = MessageDigest.getInstance("SHA-256");
-                }
-            }catch (NoSuchAlgorithmException e){
-                throw new UnsupportedOperationException(e);
-            }
             checksums[numberSequences] = md.digest(fastaSequence.sequence);
 
             numberSequences++;
@@ -64,20 +63,11 @@ public class FASTAToRawReferenceReference {
         }
         sequence_names = Arrays.copyOf(sequence_names, numberSequences);
 
-        for(int sequence_i=0; sequence_i < sequence_names.length; sequence_i++){
+        for(int sequence_i = 0; sequence_i < sequence_names.length; sequence_i++) {
             checksums[sequence_i] = new byte[16];
         }
 
-
-        AbstractLocation location = new ExternalLocation(
-                reportedPath,
-                checksumAlgorithm,
-                REFERENCE_TYPE.RAW_REF,
-                checksums
-        );
-
-
-        Reference reference = new Reference(
+        Reference reference = new RAW_Reference(
                 datasetGroupContainer.getDatasetGroupHeader().getDatasetGroupId(),
                 (byte) (maxAllocatedReferenceId + 1),
                 reference_name,
@@ -85,8 +75,9 @@ public class FASTAToRawReferenceReference {
                 reference_minor_version,
                 reference_patch_version,
                 sequence_names,
-                location
-        );
+                reportedPath,
+                checksumAlgorithm,
+                checksums);
 
         datasetGroupContainer.addReference(reference);
 

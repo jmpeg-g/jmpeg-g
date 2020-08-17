@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -25,6 +25,9 @@
 
 package es.gencom.mpegg.coder.quality;
 
+/**
+ * This class implements one of the quality value preset defined in the MPEG-G specification.
+ */
 public class DefaultQualityValueParameterSet_0 extends AbstractQualityValueParameterSet {
     private static AbstractQualityBook qualityBook
             = new Default_qvps_ID_0_codebook();
@@ -49,10 +52,6 @@ public class DefaultQualityValueParameterSet_0 extends AbstractQualityValueParam
 
         @Override
         public short encode(short qualitySAM) {
-            //if(qualitySAM < 33 || qualitySAM > 126){
-            //    throw new IllegalArgumentException("Submitted quality value of "+qualitySAM);
-            //}
-            //return (byte)(qualitySAM - 33);
             if(qualitySAM > (126-33)){
                 throw new IllegalArgumentException("Submitted quality value of "+qualitySAM);
             }
@@ -61,10 +60,6 @@ public class DefaultQualityValueParameterSet_0 extends AbstractQualityValueParam
 
         @Override
         public short decode(short encodedQuality) {
-            /*if(encodedQuality < 0 || encodedQuality > 94){
-                throw new IllegalArgumentException();
-            }
-            return (byte)(encodedQuality + 33);*/
             return encodedQuality;
         }
     }

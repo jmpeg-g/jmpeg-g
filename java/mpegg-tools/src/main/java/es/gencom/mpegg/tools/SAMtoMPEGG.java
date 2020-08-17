@@ -1,14 +1,14 @@
 package es.gencom.mpegg.tools;
 
+import es.gencom.mpegg.dataunits.DataUnitAccessUnitHeader;
 import es.gencom.mpegg.format.SequenceIdentifier;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.AbstractAccessUnitEncoder;
+import es.gencom.mpegg.encoder.AbstractAccessUnitEncoder;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnitHeader;
 import es.gencom.mpegg.io.MPEGWriter;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 public class SAMtoMPEGG {
 
@@ -20,7 +20,7 @@ public class SAMtoMPEGG {
         if(accessUnitEncoder.getReadCount() == 0){
             return;
         }
-        ByteBuffer dataUnitHeader = ByteBuffer.allocateDirect(50).order(ByteOrder.BIG_ENDIAN);
+        ByteBuffer dataUnitHeader = ByteBuffer.allocateDirect(50);
         dataUnitHeader.put((byte)0x02);
         dataUnitHeader.putInt(accessUnitEncoder.getSize() << 3);
         dataUnitHeader.limit(dataUnitHeader.position());
@@ -31,8 +31,8 @@ public class SAMtoMPEGG {
         long ref_end_position = 0;
 
         short parameterId = accessUnitEncoder.getEncodingParametersId();
-        DataUnitAccessUnit.DataUnitAccessUnitHeader dataUnitAccessUnitHeader =
-                new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+        DataUnitAccessUnitHeader dataUnitAccessUnitHeader =
+                new DataUnitAccessUnitHeader(
                         accessUnitEncoder.getAuId(),
                         accessUnitEncoder.getNumberDescriptors(),
                         parameterId,

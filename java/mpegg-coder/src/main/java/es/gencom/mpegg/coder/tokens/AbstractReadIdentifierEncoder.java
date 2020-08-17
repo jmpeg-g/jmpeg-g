@@ -38,7 +38,14 @@ public abstract class AbstractReadIdentifierEncoder {
     private long encoded;
     private long numberEntries = 0;
 
-    protected long distance(TokensList tokensList, TokensList thatTokensList, int index){
+    /**
+     * The function returns a metric of the cost of encoding one token list using the other as reference
+     * @param tokensList The token list to be used as base for the encoding
+     * @param thatTokensList The token list to encode
+     * @return Returns the cost in bytes of encoding the goal token list based on the reference token list, disregarding
+     * the effect of compression
+     */
+    protected long distance(TokensList tokensList, TokensList thatTokensList){
         Token[] tokensFromRing = tokensList.getTokens();
         Token[] tokensToEncode = thatTokensList.getTokens();
 
@@ -66,7 +73,12 @@ public abstract class AbstractReadIdentifierEncoder {
         return currentCost;
     }
 
-    public int getNumberSubSequences() {
+    /**
+     * The number of subsequences is unknown at the beginning. This methods discovers how many subsequences are
+     * currently required.
+     * @return The number of subsequences required to encode
+     */
+    int getNumberSubSequences() {
         int result = 0;
         for(int token_i=0; token_i< numberValues.length; token_i++){
             boolean allEmpty = true;
@@ -91,11 +103,11 @@ public abstract class AbstractReadIdentifierEncoder {
         return result;
     }
 
-    public int[][] getNumberValues() {
-        return numberValues;
-    }
-
-    public short[][][] resizeAndGetValues() {
+    /**
+     * This method releases any pre-allocated and still unused memory
+     * @return the decoded values ready to be reassembled in decoded strings.
+     */
+    short[][][] resizeAndGetValues() {
         int numberTokens = numberValues.length;
         for(int token_i=0; token_i< numberValues.length; token_i++){
             boolean allEmpty = true;
@@ -123,28 +135,12 @@ public abstract class AbstractReadIdentifierEncoder {
         return values;
     }
 
-    private class SearchDiffResult {
-        private final int bestIndex;
-        private final long cost;
-
-        private SearchDiffResult(int bestIndex, long cost) {
-            this.bestIndex = bestIndex;
-            this.cost = cost;
-        }
-
-        public int getBestIndex() {
-            return bestIndex;
-        }
-
-        public long getCost() {
-            return cost;
-        }
-    }
-
-
-
-
-
+    /**
+     * The encoder can be called either in non-greedy mode, or in greedy-mode. In non greedy, it will search for each
+     * identifier which prior identifier best matches among the last 32768, while in greedy mode it always encode
+     * comparing with the latest identifier.
+     * @param greedy Selector of greedy behaviour (true means gready)
+     */
     AbstractReadIdentifierEncoder(boolean greedy) {
         if(!greedy) {
             RING_SIZE = 32768;
@@ -182,6 +178,11 @@ public abstract class AbstractReadIdentifierEncoder {
         }
     }
 
+    /**
+     * Searches among all prior token lists which one minimizes the number of bytes to encode.
+     * @param thatTokensList The token list to be encoded
+     * @return A pointer to the prior token list minimizing the number of bytes to encode for the current one.
+     */
     private SearchDiffResult findBestMatch(TokensList thatTokensList) {
         String readIdentifier = thatTokensList.toString();
         Long possibleEqualId = readIdentifierToReadId.getId(readIdentifier);
@@ -202,7 +203,7 @@ public abstract class AbstractReadIdentifierEncoder {
                 continue;
             }
 
-            long currentCost = distance(tokensList, thatTokensList, index);
+            long currentCost = distance(tokensList, thatTokensList);
 
             if(currentCost < currentMin){
                 bestIndex = index;
@@ -222,13 +223,13 @@ public abstract class AbstractReadIdentifierEncoder {
             encode_without_ref(tokensList);
         }else{
             SearchDiffResult bestMatch = findBestMatch(tokensList);
-            if (bestMatch.cost == 0){
+            if (bestMatch.getCost() == 0){
                 addValue(DupToken.id, 0, 0);
-                addValueInt(bestMatch.bestIndex, 0, DupToken.id);
+                addValueInt(bestMatch.getBestIndex(), 0, DupToken.id);
             }else{
-                TokensList bestMatchTokens = tokensListRingBuffer.getValue(bestMatch.bestIndex);
+                TokensList bestMatchTokens = tokensListRingBuffer.getValue(bestMatch.getBestIndex());
                 addValue(DiffToken.id, 0, 0);
-                addValueInt(bestMatch.bestIndex, 0, DiffToken.id);
+                addValueInt(bestMatch.getBestIndex(), 0, DiffToken.id);
                 encode_diff(bestMatchTokens, tokensList);
                 addValue(EndToken.id, tokensList.getNumberTokens()+1, 0);
             }
@@ -238,6 +239,11 @@ public abstract class AbstractReadIdentifierEncoder {
         encoded++;
     }
 
+    /**
+     * Encode a token list as a difference to a prior token list
+     * @param bestMatchTokens tokens list to be used as reference
+     * @param tokensList tokens list to be encoded.
+     */
     private void encode_diff(TokensList bestMatchTokens, TokensList tokensList){
         for(int i=0; i<tokensList.getNumberTokens(); i++){
             if(bestMatchTokens.getTokens()[i].equals(tokensList.getTokens()[i])){
@@ -272,6 +278,10 @@ public abstract class AbstractReadIdentifierEncoder {
         }
     }
 
+    /**
+     * Method to be used for the first tokens list
+     * @param tokensList tokens list to be encoded without referencing any other list.
+     */
     private void encode_without_ref(
             TokensList tokensList
     ) {
@@ -316,15 +326,11 @@ public abstract class AbstractReadIdentifierEncoder {
 
     protected abstract void encodeSpecific(String readIdentifier);
 
-    public static byte[] getMatchTokenEncoding(){
-        return new byte[]{0};
-    }
-
     short[][][] getValues() {
         return values;
     }
 
-    public long getNumberEntries() {
+    long getNumberEntries() {
         return numberEntries;
     }
 }

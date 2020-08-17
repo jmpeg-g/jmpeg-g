@@ -28,8 +28,17 @@ package es.gencom.mpegg.decoder;
 import es.gencom.mpegg.Record;
 import java.io.IOException;
 
-public abstract class AbstractAccessUnitDecoder {
+public interface AbstractAccessUnitDecoder {
 
-    public abstract boolean hasNext() throws IOException;
-    public abstract Record getRecord() throws IOException;
+    /**
+     * @return Returns true if there is still at least one other record to get.
+     * @throws IOException Can be caused by multiple error sources.
+     */
+    boolean hasNext() throws IOException;
+
+    /**
+     * @return Returns the next record to be decoded
+     * @throws IOException Can be caused by multiple error sources.
+     */
+    Record getRecord() throws IOException;
 }

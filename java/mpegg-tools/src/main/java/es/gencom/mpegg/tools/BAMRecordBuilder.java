@@ -2,6 +2,7 @@ package es.gencom.mpegg.tools;
 
 import es.gencom.integration.bam.BAMRecord;
 import es.gencom.integration.sam.tag.MD;
+import es.gencom.integration.sam.tag.RG;
 
 public class BAMRecordBuilder {
     public static BAMRecord build(
@@ -13,8 +14,10 @@ public class BAMRecordBuilder {
         bamRecord.setPositionStart((int) samLikeAlignment.getPosition()+1);
         bamRecord.setSequence(samLikeAlignment.getSequence());
         bamRecord.setCIGAR(samLikeAlignment.getCigarString());
-        bamRecord.setRefID(samLikeAlignment.getSequenceId().getSequenceIdentifier());
-        bamRecord.setRName(sequenceNames[samLikeAlignment.getSequenceId().getSequenceIdentifier()]);
+        if(samLikeAlignment.getSequenceId() != null) {
+            bamRecord.setRefID(samLikeAlignment.getSequenceId().getSequenceIdentifier());
+            bamRecord.setRName(sequenceNames[samLikeAlignment.getSequenceId().getSequenceIdentifier()]);
+        }
 
         if(!samLikeAlignment.isPaired()){
             bamRecord.setNext_refID(-1);
@@ -22,8 +25,10 @@ public class BAMRecordBuilder {
             bamRecord.setNextPositionStart(0);
         }else {
             if (samLikeAlignment.isMateUnmapped()) {
-                bamRecord.setNext_refID(samLikeAlignment.getSequenceId().getSequenceIdentifier());
-                bamRecord.setRNameNext(sequenceNames[samLikeAlignment.getSequenceId().getSequenceIdentifier()]);
+                if(samLikeAlignment.getSequenceId() != null) {
+                    bamRecord.setNext_refID(samLikeAlignment.getSequenceId().getSequenceIdentifier());
+                    bamRecord.setRNameNext(sequenceNames[samLikeAlignment.getSequenceId().getSequenceIdentifier()]);
+                }
                 bamRecord.setNextPositionStart((int) samLikeAlignment.getPosition() + 1);
             } else {
                 bamRecord.setNext_refID(samLikeAlignment.getMateSequenceId().getSequenceIdentifier());
@@ -51,6 +56,9 @@ public class BAMRecordBuilder {
         if(samLikeAlignment.getMDTag() != null) {
             bamRecord.setTag(new MD(samLikeAlignment.getMDTag()));
         }
+
+        bamRecord.setMappingQuality((byte) samLikeAlignment.getMappingScore());
+        bamRecord.setTag(new RG(samLikeAlignment.getReadGroupName()));
 
         return bamRecord;
     }

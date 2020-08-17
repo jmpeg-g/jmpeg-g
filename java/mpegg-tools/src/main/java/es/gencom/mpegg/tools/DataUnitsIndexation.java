@@ -3,8 +3,8 @@ package es.gencom.mpegg.tools;
 import es.gencom.mpegg.format.SequenceIdentifier;
 import es.gencom.mpegg.tools.IntervalsSearch.Interval;
 import es.gencom.mpegg.tools.IntervalsSearch.Intervals;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,7 +19,7 @@ public class DataUnitsIndexation {
         HashMap<SequenceIdentifier, List<DataUnitAccessUnit>> buffer = new HashMap<>();
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
             List<DataUnitAccessUnit> dataUnitAccessUnitInSequence = buffer.computeIfAbsent(
-                    dataUnitAccessUnit.getHeader().getSequence_ID(),
+                    dataUnitAccessUnit.header.sequence_id,
                     k -> new ArrayList<>()
             );
             dataUnitAccessUnitInSequence.add(dataUnitAccessUnit);
@@ -32,8 +32,8 @@ public class DataUnitsIndexation {
             int position = 0;
             for(DataUnitAccessUnit dataUnitAccessUnit : dataUnitAccessUnits){
                 intervals[position] = new Interval(
-                        dataUnitAccessUnit.getHeader().getAu_start_position(),
-                        dataUnitAccessUnit.getHeader().getAu_end_position(),
+                        dataUnitAccessUnit.header.au_start_position,
+                        dataUnitAccessUnit.header.au_end_position,
                         dataUnitAccessUnit
                 );
                 position++;

@@ -1,6 +1,6 @@
 package es.gencom.mpegg.tools;
 
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnits;
 import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
 import es.gencom.mpegg.io.MPEGWriter;
@@ -120,7 +120,7 @@ public class MPEGG {
                         false,
                         formatReference.getReferenceId(),
                         100000,
-                        Alphabet.DNA_IUPAC
+                        ALPHABET.DNA_IUPAC
                 );
 
                 MPEGWriter writer = new WritableMSBitChannel(new FileOutputStream(mpeggPath).getChannel());
@@ -130,7 +130,7 @@ public class MPEGG {
                 MPEGFile mpegFile = new MPEGFile();
                 mpegFile.read(new ReadableMSBitFileChannel(new FileInputStream(file).getChannel()));
 
-                DatasetGroupContainer datasetGroupContainer = mpegFile.getDatasetGroupContainer(0);
+                DatasetGroupContainer datasetGroupContainer = mpegFile.getDatasetGroupContainerById((byte)0);
                 DatasetContainer datasetContainer = datasetGroupContainer.getDatasetContainerById(0);
 
                 DataUnits dataUnits = DatasetToDataUnits.getDataUnits(datasetGroupContainer, datasetContainer);
@@ -141,7 +141,8 @@ public class MPEGG {
                 MPEGGBytestreamToBAM.decode(
                         dataUnits,
                         file.replace("mpegg", "mpegg_bam"),
-                        reference.getSequenceNames()
+                        reference.getSequenceNames(),
+                        dataUnits.getAllReadGroupNames()
                 );
             }
         }catch (Exception e){

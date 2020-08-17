@@ -34,13 +34,33 @@ import java.io.IOException;
  */
 
 public interface DecoderConfiguration {
+
     /**
-     * Write the decoder_configuration_type into the MPEG stream
+     * Get the encoding mode of this configuration ('encoding_mode_ID')
+     * 
+     * @return the encoding mode of this configuration (0 for CABAC)
+     */
+    ENCODING_MODE_ID getEncodingModeId();
+            
+    /**
+     * Get the number of descriptor subsequences in this configuration.
+     * 
+     * @return the number of descriptor subsequences
+     */
+    int getNumberSubsequences();
+
+    /**
+     * Get the configuration block size in bits.
+     * 
+     * @return the size of the decoder configuration data in bits
+     */
+    long sizeInBits();
+    
+    /**
+     * Write the decoder_configuration_type into the MPEG stream.
      *
      * @param writer
      * @throws IOException
      */
-    public abstract void write(MPEGWriter writer) throws IOException;
-
-    long sizeInBits();
+    void write(MPEGWriter writer) throws IOException;
 }

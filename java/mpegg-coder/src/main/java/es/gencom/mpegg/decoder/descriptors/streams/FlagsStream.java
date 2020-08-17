@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -27,24 +27,20 @@ package es.gencom.mpegg.decoder.descriptors.streams;
 
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
 
 public class FlagsStream {
-    private Payload readers[];
-    private DescriptorDecoder decoders[];
+    private DescriptorDecoder[] decoders;
     private byte flags;
-    private long j2_0 = 0;
-    private long j2_1 = 0;
-    private long j2_2 = 0;
 
     public FlagsStream(
-            final DataUnitAccessUnit.Block block, 
+            final AccessUnitBlock block, 
             final DATA_CLASS dataClass, 
             final EncodingParameters encodingParameters) {
 
@@ -52,12 +48,11 @@ public class FlagsStream {
                 DESCRIPTOR_ID.FLAGS,
                 dataClass);
 
-        if(block == null) {
-            readers = null;
-        } else {
+        Payload[] readers;
+        if(block != null) {
             readers = block.getPayloads();
             decoders = new DescriptorDecoder[readers.length];
-            for(int subsequence_index = 0; subsequence_index<readers.length; subsequence_index++){
+            for(int subsequence_index = 0; subsequence_index< readers.length; subsequence_index++){
                 decoders[subsequence_index] = conf.getDescriptorDecoder(
                         readers[subsequence_index],
                         DESCRIPTOR_ID.FLAGS,
@@ -88,9 +83,6 @@ public class FlagsStream {
         flags |= (byte)((val1 != 0 ? 1:0) << 1);
         flags |= (byte)((val2 != 0 ? 1:0) << 2);
 
-        j2_0++;
-        j2_1++;
-        j2_2++;
     }
 
     public byte getFlags(){

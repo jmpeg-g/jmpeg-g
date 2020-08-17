@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 
 public class IlluminaReadIdentifierEncoder extends AbstractReadIdentifierEncoder {
 
+    //Regex matching illumina's read identifier schema.
     private final Pattern pattern = Pattern.compile("([a-zA-Z0-9_]+):([0-9]+):([0-9]+):([0-9]+):([0-9]+)#([0-9]+)");
 
     public IlluminaReadIdentifierEncoder(){
@@ -37,7 +38,7 @@ public class IlluminaReadIdentifierEncoder extends AbstractReadIdentifierEncoder
     }
 
     @Override
-    protected long distance(TokensList tokensList, TokensList thatTokensList, int index) {
+    protected long distance(TokensList tokensList, TokensList thatTokensList) {
         Token[] tokensFromRing = tokensList.getTokens();
         Token[] tokensToEncode = thatTokensList.getTokens();
 
@@ -53,7 +54,7 @@ public class IlluminaReadIdentifierEncoder extends AbstractReadIdentifierEncoder
         return currentCost;
     }
 
-    public IlluminaReadIdentifierEncoder(boolean gready){
+    private IlluminaReadIdentifierEncoder(boolean gready){
         super(gready);
     }
 

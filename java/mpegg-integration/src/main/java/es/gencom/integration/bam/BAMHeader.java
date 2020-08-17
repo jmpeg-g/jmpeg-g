@@ -1,6 +1,6 @@
 /**
  * *****************************************************************************
- * Copyright (C) 2015 Spanish National Bioinformatics Institute (INB) and
+ * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
  *
  * Modifications to the initial code base are copyright of their respective
@@ -27,6 +27,8 @@ package es.gencom.integration.bam;
 
 import es.gencom.integration.io.DataReaderHelper;
 import es.gencom.integration.io.DataWriterHelper;
+import es.gencom.integration.sam.header.ReferenceLine;
+import es.gencom.integration.sam.header.SAMHeader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,18 +39,35 @@ import java.util.zip.DataFormatException;
  * @author Dmitry Repchevsky
  */
 
-public class BAMHeader {
+public class BAMHeader extends SAMHeader {
 
     public final static byte MAGIC[] = {'B', 'A', 'M', 0x01};
 
-    public final String text;
     public final Reference[] refs;
 
-    public BAMHeader(final String text, final Reference[] refs) {
-        this.text = text;
+    public BAMHeader(final Reference[] refs) {
         this.refs = refs;
     }
-            
+
+    public BAMHeader(final SAMHeader header) {
+        super(header);
+        
+        if (references == null) {
+            refs = new Reference[0];
+        } else {
+            refs = new Reference[references.size()];
+            for (int i = 0; i < refs.length; i++) {
+                final ReferenceLine rl = references.get(i);
+                refs[i] = new Reference(rl.referenceSequenceName, rl.referenceLength.intValue());
+            }
+        }
+    }
+    
+    public BAMHeader(final SAMHeader header, final Reference[] refs) {
+        super(header);
+        this.refs = refs;
+    }
+
     public BAMHeader(final InputStream in) throws IOException, DataFormatException {
         if (in.read() != MAGIC[0] ||
             in.read() != MAGIC[1] ||
@@ -56,11 +75,17 @@ public class BAMHeader {
             in.read() != MAGIC[3]) {
             throw new DataFormatException("not BAM file");
         }
-         final int l_text = (int)DataReaderHelper.readUnsignedInt(in);
+        final int l_text = (int)DataReaderHelper.readUnsignedInt(in);
         final byte[] txt = new byte[l_text];
         in.read(txt);
 
-        text = new String(txt, StandardCharsets.US_ASCII);
+        final SAMHeader header = new SAMHeader(new String(txt, StandardCharsets.US_ASCII));
+
+        header_line = header.getHeaderLine();
+        readGroups = header.getReadGroups();
+        references = header.getReferences();
+        programs = header.getPrograms();
+        comments = header.getComments();
         
         final int n_ref = (int)DataReaderHelper.readUnsignedInt(in);
         refs = new Reference[n_ref];
@@ -76,7 +101,7 @@ public class BAMHeader {
                     new String(name, 0, l_name - 1, StandardCharsets.US_ASCII), l_ref);
         }
     }
-    
+
     public void write(final OutputStream out) throws IOException {
         
         out.write(MAGIC[0]);
@@ -84,9 +109,9 @@ public class BAMHeader {
         out.write(MAGIC[2]);
         out.write(MAGIC[3]);
 
-        final byte[] txt = text.getBytes(StandardCharsets.US_ASCII);
-        DataWriterHelper.writeUnsignedInt(out, txt.length);
-        out.write(txt);
+        final String txt = toString();
+        DataWriterHelper.writeUnsignedInt(out, txt.length());
+        out.write(txt.getBytes(StandardCharsets.US_ASCII));
         
         DataWriterHelper.writeUnsignedInt(out, refs.length);
         for (int i = 0; i < refs.length; i++) {

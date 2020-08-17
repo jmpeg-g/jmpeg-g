@@ -25,7 +25,6 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.SplitType;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.format.SequenceIdentifier;
@@ -33,37 +32,31 @@ import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
-
-import static es.gencom.mpegg.decoder.descriptors.streams.StreamsConstantsParams.MAX_NUM_TEMPLATE_SEGMENTS;
+import java.util.Arrays;
 
 public class PairStream {
-    private final Payload sub_streams[];
-    private final DescriptorDecoder decoders[];
+    private final DescriptorDecoder[] decoders;
     private final DATA_CLASS dataClass;
     private final byte numberOfTemplateSegments;
+    private final SequenceIdentifier seqId;
 
-    private int segment_flag;
-    private boolean read_1_first;
-    private long abs_pos;
-    private long delta;
-    private long record_index;
-    private SequenceIdentifier seqId;
-    private long au_ID;
-    private boolean paired;
-    private long value_subsequence0;
-    private boolean same_sequence;
+    private long value_subsequence0 = 0;
+
 
 
     public PairStream(
             DATA_CLASS dataClass,
-            DataUnitAccessUnit.Block block,
+            AccessUnitBlock block,
             byte numberOfTemplateSegments,
+            SequenceIdentifier seqId,
             EncodingParameters encodingParameters
     ) {
         this.dataClass = dataClass;
+        this.seqId = seqId;
         this.numberOfTemplateSegments = numberOfTemplateSegments;
 
         DescriptorDecoderConfiguration configuration = encodingParameters.getDecoderConfiguration(
@@ -71,6 +64,7 @@ public class PairStream {
                 dataClass
         );
 
+        Payload[] sub_streams;
         if(block != null) {
             sub_streams = block.getPayloads();
             decoders = new DescriptorDecoder[sub_streams.length];
@@ -137,208 +131,178 @@ public class PairStream {
         );
     }
 
-    public PairStreamSymbol readUnknown(
-            int[] numberOfSegmentAlignments,
-            long[][] mappingPos,
-            SequenceIdentifier sequenceIdentifier,
-            boolean unpairedRead,
-            int numberOfAlignments,
-            int[][] alignPtr,
-            long numberOfAlignedRecordSegments,
-            long[][] splicedSegLength
+    public boolean readFirstAlignment(
+            SequenceIdentifier[][] mappingSequenceIdentifiers,
+            long[][][] mappingPosition,
+            long[] accessUnitRecord,
+            long[] recordIndex,
+            SplitType[][] splitType
     ) throws IOException {
-        if(unpairedRead){
-            return new PairStreamSymbol(
-                    unpairedRead,
-                    null,
-                    null,
-                    null,
-                    null,
-                    new SplitType[]{SplitType.Unpaired},
-                    true
-            );
-        }
+        boolean read1First = true;
 
-
-        SequenceIdentifier[] mateSeqId = new SequenceIdentifier[Math.toIntExact(numberOfSegmentAlignments[1])];
-        long[][] matePosition = new long[1][1];
-        SplitType[] splitMate = new SplitType[numberOfSegmentAlignments[1]];
-        long[] mateAuId = new long[1];
-        long[] mateRecordIndex = new long[1];
-
-        splitMate[0] = SplitType.SameRecord;
-        boolean read_1_first = true;
-
-        if(dataClass == DATA_CLASS.CLASS_HM) {
-            read_1_first = (decoders[1].read() & 1) != 0;
-            splitMate[0] = SplitType.SameRecord;
+        if(dataClass == DATA_CLASS.CLASS_HM){
+            read1First = (decoders[1].read() & 0x0001) == 0;
+            splitType[0][0] = SplitType.MappedSameRecord;
+            splitType[0][1] = SplitType.UnmappedSameRecord;
         } else {
-            for(int templateSegment_i=1; templateSegment_i < numberOfTemplateSegments; templateSegment_i++){
+            if(numberOfTemplateSegments > 2){
+                throw new UnsupportedOperationException();
+            }
+            for(int segment_i = 1; segment_i < numberOfTemplateSegments; segment_i++){
                 if(value_subsequence0 == 0){
-                    splitMate[0] = SplitType.SameRecord;
-                    if( dataClass != DATA_CLASS.CLASS_U){
+                    splitType[0][segment_i] = SplitType.MappedSameRecord;
+                    if(dataClass != DATA_CLASS.CLASS_U){
                         long value_subsequence1 = decoders[1].read();
-                        read_1_first = (value_subsequence1 & 0x0001) == 0;
-                        delta = value_subsequence1 >> 1;
-                        matePosition[0][0] = mappingPos[0][0] + delta;
-                        mateSeqId[0] = sequenceIdentifier;
-                        segment_flag = 0;
-                        same_sequence = true;
-                    }else{
-                        read_1_first = true;
-                        mateAuId[templateSegment_i] = -1;
-                        mateRecordIndex[templateSegment_i] = -1;
+                        read1First = (value_subsequence1 & 0x1) == 0;
+                        long delta = value_subsequence1 >> 1;
+                        mappingPosition[0][segment_i][0] = mappingPosition[0][0][0] + delta;
+                        mappingSequenceIdentifiers[0][segment_i] = seqId;
+                    } else {
+                        read1First = true;
+                        accessUnitRecord[segment_i] = -1;
+                        recordIndex[segment_i] = -1;
                     }
                 } else if (value_subsequence0 == 1){
-                    splitMate[0] = SplitType.DifferentRecord;
-                    read_1_first = false;
+                    read1First = false;
                     if(dataClass != DATA_CLASS.CLASS_U){
-                        matePosition[0][0] = decoders[2].read();
-                        mateSeqId[0] = sequenceIdentifier;
+                        mappingPosition[0][segment_i][0] = decoders[2].read();
+                        mappingSequenceIdentifiers[0][segment_i] = seqId;
+                        splitType[0][segment_i] = SplitType.MappedDifferentRecordSameSequence;
                     } else {
-                        mateAuId[templateSegment_i] = -1;
-                        mateRecordIndex[templateSegment_i] = decoders[2].read();
+                        accessUnitRecord[segment_i] = -1;
+                        recordIndex[segment_i] = decoders[2].read();
+                        splitType[0][segment_i] = SplitType.UnmappedDifferentRecordSameAU;
                     }
                 } else if (value_subsequence0 == 2){
-                    splitMate[0] = SplitType.DifferentRecord;
-                    read_1_first = true;
+                    read1First = true;
                     if(dataClass != DATA_CLASS.CLASS_U) {
-                        matePosition[0][0] =decoders[3].read();
-                        mateSeqId[0] = sequenceIdentifier;
-                    }else {
-                        mateAuId[templateSegment_i] = -1;
-                        mateRecordIndex[templateSegment_i] = decoders[3].read();
+                        mappingPosition[0][segment_i][0] = decoders[3].read();
+                        mappingSequenceIdentifiers[0][segment_i] = seqId;
+                        splitType[0][segment_i] = SplitType.MappedDifferentRecordSameSequence;
+                    } else {
+                        accessUnitRecord[segment_i] = -1;
+                        recordIndex[segment_i] = decoders[3].read();
+                        splitType[0][segment_i] = SplitType.UnmappedDifferentRecordSameAU;
                     }
                 } else if (value_subsequence0 == 3){
-                    splitMate[0] = SplitType.DifferentRecord;
-                    read_1_first = false;
+                    read1First = false;
                     if(dataClass != DATA_CLASS.CLASS_U){
-                        mateSeqId[0] = new SequenceIdentifier(Math.toIntExact(decoders[4].read()));
-                        matePosition[0][0] = decoders[6].read();
-                    }else{
-                        mateAuId[templateSegment_i] = decoders[4].read();
-                        mateRecordIndex[templateSegment_i] = decoders[6].read();
+                        mappingSequenceIdentifiers[0][segment_i] = new SequenceIdentifier((int)decoders[4].read());
+                        mappingPosition[0][segment_i][0] = decoders[6].read();
+                        splitType[0][segment_i] = SplitType.MappedDifferentRecordDifferentSequence;
+                    } else {
+                        accessUnitRecord[segment_i] = decoders[4].read();
+                        recordIndex[segment_i] = decoders[6].read();
+                        splitType[0][segment_i] = SplitType.UnmappedDifferentRecordDifferentAU;
                     }
                 } else if (value_subsequence0 == 4){
-                    splitMate[0] = SplitType.DifferentRecord;
-                    read_1_first = true;
+                    read1First = true;
                     if(dataClass != DATA_CLASS.CLASS_U){
-                        mateSeqId[0] = new SequenceIdentifier(Math.toIntExact(decoders[5].read()));
-                        matePosition[0][0] = decoders[7].read();
-                    }else{
-                        mateAuId[templateSegment_i] = decoders[5].read();
-                        mateRecordIndex[templateSegment_i] = decoders[7].read();
+                        mappingSequenceIdentifiers[0][segment_i] = new SequenceIdentifier((int)decoders[5].read());
+                        mappingPosition[0][segment_i][0] = decoders[7].read();
+                        splitType[0][segment_i] = SplitType.MappedDifferentRecordDifferentSequence;
+                    } else {
+                        accessUnitRecord[segment_i] = decoders[5].read();
+                        recordIndex[segment_i] = decoders[7].read();
+                        splitType[0][segment_i] = SplitType.UnmappedDifferentRecordDifferentAU;
                     }
                 } else if (value_subsequence0 == 5){
-                    splitMate[0] = SplitType.UnmappedOtherRecord;
-                    read_1_first = true;
+                    splitType[0][segment_i] = SplitType.Unpaired;
+                    read1First = true;
                 } else if (value_subsequence0 == 6){
-                    splitMate[0] = SplitType.UnmappedOtherRecord;
-                    read_1_first = false;
+                    splitType[0][segment_i] = SplitType.Unpaired;
+                    read1First = false;
+                } else {
+                    throw new IllegalArgumentException();
                 }
             }
         }
 
+        return read1First;
+    }
 
-        if(
-            (
-                dataClass == DATA_CLASS.CLASS_P
-                || dataClass == DATA_CLASS.CLASS_N
-                || dataClass == DATA_CLASS.CLASS_M
-                || dataClass == DATA_CLASS.CLASS_I
-            ) && !unpairedRead
-        ){
-            for(long j = 1; j < numberOfTemplateSegments; j++){
-                long currAlignIdx = 0;
-                for(int i = 1; i < numberOfAlignments; i++){
-                    long alignIdx = alignPtr[i][Math.toIntExact(j)];
+    public void readMoreAlignments(
+            SequenceIdentifier[][] mappingSequenceIdentifiers,
+            long[][][] mappingPosition,
+            SplitType[][] splitType,
+            int[] numberOfSegmentAlignments,
+            boolean unpairedRead,
+            int numberOfAlignments,
+            int[][] alignPtr
+    ) throws IOException {
+        int alignIdx;
+        for(int i=1; i<numberOfSegmentAlignments[0]; i++){
+            splitType[i] = new SplitType[numberOfTemplateSegments];
+            splitType[i][0] = SplitType.MappedSameRecord;
+        }
+
+        if((dataClass == DATA_CLASS.CLASS_P ||
+                dataClass == DATA_CLASS.CLASS_N ||
+                dataClass == DATA_CLASS.CLASS_M ||
+                dataClass == DATA_CLASS.CLASS_I) &&
+                !unpairedRead ){
+            for(int segment_j=1; segment_j < numberOfTemplateSegments; segment_j++){
+                int currAlignIdx = 0;
+                for(int alignment_i=1; alignment_i < numberOfAlignments; alignment_i++){
+                    alignIdx = alignPtr[alignment_i][segment_j];
                     if(alignIdx > currAlignIdx) {
                         currAlignIdx = alignIdx;
-                        value_subsequence0 = decoders[0].read();
-                        if(value_subsequence0 == 0){
-                            splitMate[Math.toIntExact(alignIdx)] = SplitType.SameRecord;
+                        long value_subsequence0 = decoders[0].read();
+                        if (value_subsequence0 == 0) {
+                            splitType[alignIdx][segment_j] = SplitType.MappedSameRecord;
                             long value_subsequence1 = decoders[1].read();
                             long delta = value_subsequence1 >> 1;
-                            if((value_subsequence1 & 0x01) != 0){
+                            if ((value_subsequence1 & 0x1) != 0) {
                                 delta = -delta;
                             }
-
-                            matePosition[Math.toIntExact(alignIdx)][0] =
-                                mappingPos[Math.toIntExact(alignPtr[i][0])][0] + delta;
-                            mateSeqId[Math.toIntExact(alignIdx)] = seqId;
-                        } else if (value_subsequence0 == 2){
-                            splitMate[Math.toIntExact(alignIdx)] = SplitType.SameRecord;
-                            matePosition[Math.toIntExact(alignIdx)][0] = decoders[3].read();
-                            mateSeqId[Math.toIntExact(alignIdx)] = seqId;
-                        } else if (value_subsequence0 == 4){
-                            splitMate[Math.toIntExact(alignIdx)] = SplitType.DifferentRecord;
-                            mateSeqId[Math.toIntExact(alignIdx)] =
-                                    new SequenceIdentifier(Math.toIntExact(decoders[5].read())
-                            );
-                            matePosition[Math.toIntExact(alignIdx)][0] = decoders[7].read();
+                            mappingPosition[alignIdx][segment_j][0] =
+                                    mappingPosition[alignPtr[alignment_i][0]][0][0]+ delta;
+                            mappingSequenceIdentifiers[alignIdx][segment_j] = seqId;
+                        } else if (value_subsequence0 == 2) {
+                            splitType[alignIdx][segment_j] = SplitType.MappedSameRecord;
+                            mappingPosition[alignIdx][segment_j][0] = decoders[3].read();
+                            mappingSequenceIdentifiers[alignIdx][segment_j] = seqId;
+                        } else if (value_subsequence0 == 4) {
+                            splitType[alignIdx][segment_j] = SplitType.MappedDifferentRecordDifferentSequence;
+                            mappingSequenceIdentifiers[alignIdx][segment_j] =
+                                    new SequenceIdentifier((int) decoders[5].read());
+                            mappingPosition[alignIdx][segment_j][0] = decoders[7].read();
                         }
                     }
                 }
             }
         }
+    }
 
-        long[][] splicedSegMappingPos = new long
-                [Math.toIntExact(numberOfAlignedRecordSegments)]
-                [MAX_NUM_TEMPLATE_SEGMENTS];
-        for(long i=0; i < numberOfAlignedRecordSegments; i++){
-            splicedSegMappingPos[Math.toIntExact(i)][0] = matePosition[0][0];
-        }
-
+    public void readPairSpliced(
+            int numberOfAlignedRecordSegments,
+            long[][][] mappingPos,
+            int[] numberOfSplicesSeg,
+            long[][] splicedSegLength
+    ) throws IOException {
         long prevSpliceMappingEnd;
-        if(dataClass == DATA_CLASS.CLASS_I || dataClass == DATA_CLASS.CLASS_HM) {
-            for(
-                    long alignedRecordSegment_i=0;
-                    alignedRecordSegment_i < numberOfAlignedRecordSegments;
-                    alignedRecordSegment_i++
-            ){
-                for(
-                        long splicedSegment_i = 1;
-                        splicedSegment_i < splicedSegLength
-                                [Math.toIntExact(alignedRecordSegment_i)].length;
-                        splicedSegment_i++
-                ){
-                    prevSpliceMappingEnd =
-                            splicedSegMappingPos
-                                    [Math.toIntExact(alignedRecordSegment_i)]
-                                    [Math.toIntExact(splicedSegment_i - 1)] +
-                                        splicedSegLength
-                                                [Math.toIntExact(alignedRecordSegment_i)]
-                                                [Math.toIntExact(splicedSegment_i - 1)]
-                                    ;
+        for(int segment_i=0; segment_i < numberOfAlignedRecordSegments; segment_i++){
+            mappingPos[0][segment_i] = Arrays.copyOf(mappingPos[0][segment_i], numberOfSplicesSeg[segment_i]);
+        }
+        if(dataClass == DATA_CLASS.CLASS_I || dataClass == DATA_CLASS.CLASS_HM){
+            for(int segment_i=0; segment_i < numberOfAlignedRecordSegments; segment_i++){
+                for(int splice_j=1; splice_j < numberOfSplicesSeg[segment_i]; splice_j++){
+                    prevSpliceMappingEnd = mappingPos[segment_i][segment_i][splice_j-1] +
+                            splicedSegLength[segment_i][splice_j-1];
                     value_subsequence0 = decoders[0].read();
                     if(value_subsequence0 == 0){
                         long value_subsequence1 = decoders[1].read();
-                        long delta = value_subsequence1 >> 1;
-                        if((value_subsequence1 & 1) != 0){
+                        long delta = value_subsequence1  >> 1;
+                        if((value_subsequence1 & 0x1) != 0){
                             delta = -delta;
                         }
-                        splicedSegMappingPos
-                                [Math.toIntExact(alignedRecordSegment_i)]
-                                [Math.toIntExact(splicedSegment_i - 1)] = prevSpliceMappingEnd + delta;
-                    } else {
-                        splicedSegMappingPos
-                            [Math.toIntExact(alignedRecordSegment_i)]
-                            [Math.toIntExact(splicedSegment_i - 1)] = decoders[3].read();
+                        mappingPos[0][segment_i][splice_j] = prevSpliceMappingEnd + delta;
+                    } else if(value_subsequence0 == 2){
+                        mappingPos[0][segment_i][splice_j] = decoders[3].read();
                     }
                 }
             }
         }
-
-
-        return new PairStreamSymbol(
-                unpairedRead,
-                mateSeqId,
-                matePosition,
-                mateAuId,
-                mateRecordIndex,
-                splitMate,
-                read_1_first
-        );
     }
 
 

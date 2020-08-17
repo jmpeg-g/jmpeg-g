@@ -25,7 +25,7 @@
 
 package es.gencom.mpegg.coder.reference;
 
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DatasetType;
 import es.gencom.mpegg.format.SequenceIdentifier;
 
@@ -55,7 +55,7 @@ public class Sequence {
         if (dataUnitAccessUnit.getParameter().getDatasetType() != DatasetType.REFERENCE){
             throw new InternalError("submitted data unit access unit of a wrong type for sequence");
         }
-        if(!dataUnitAccessUnit.getHeader().getRef_sequence_id().equals(sequenceIdentifier)){
+        if(!dataUnitAccessUnit.header.ref_sequence_id.equals(sequenceIdentifier)){
             throw new InternalError("submitted data unit access unit encodes a sequence different from the current one");
         }
 
@@ -64,7 +64,7 @@ public class Sequence {
         }
 
         int posToInsert =
-                Arrays.binarySearch(subSequences_RefStart, dataUnitAccessUnit.getHeader().getRef_start_position());
+                Arrays.binarySearch(subSequences_RefStart, dataUnitAccessUnit.header.ref_start_position);
         if(posToInsert >= 0){
             throw new InternalError("two data unit access unit with same sequence and sequence start");
         }else{
@@ -76,10 +76,10 @@ public class Sequence {
                     posToInsert+1,
                     subSequences_RefStart.length-posToInsert-1
             );
-            subSequences_RefStart[posToInsert] = dataUnitAccessUnit.getHeader().getRef_start_position();
+            subSequences_RefStart[posToInsert] = dataUnitAccessUnit.header.ref_start_position;
         }
 
-        dataUnitAccessUnits.put(dataUnitAccessUnit.getHeader().getRef_start_position(), dataUnitAccessUnit);
+        dataUnitAccessUnits.put(dataUnitAccessUnit.header.ref_start_position, dataUnitAccessUnit);
     }
 
     public byte[] getSequenceFragment(long start, long end) throws IOException {

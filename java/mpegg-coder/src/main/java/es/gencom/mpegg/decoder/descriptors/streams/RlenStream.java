@@ -26,11 +26,12 @@
 package es.gencom.mpegg.decoder.descriptors.streams;
 
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -40,17 +41,13 @@ import static es.gencom.mpegg.decoder.descriptors.streams.StreamsConstantsParams
 
 public class RlenStream {
     private final DATA_CLASS dataClass;
-    private final Payload sub_streams[];
-    private final DescriptorDecoder decoders[];
-    private int j7_0 = 0;
+    private final DescriptorDecoder[] decoders;
     private final long reads_length;
     private final boolean splicedReadsFlag;
 
-    long read_len[];
-
     public RlenStream(
             final DATA_CLASS dataClass,
-            final DataUnitAccessUnit.Block block,
+            final AccessUnitBlock block,
             final int reads_length,
             final boolean splicedReadsFlag,
             final EncodingParameters encodingParameters) {
@@ -59,8 +56,8 @@ public class RlenStream {
         this.reads_length = reads_length;
         this.splicedReadsFlag = splicedReadsFlag;
 
+        Payload[] sub_streams;
         if(block == null){
-            sub_streams = null;
             decoders = null;
             return;
         }
@@ -71,7 +68,7 @@ public class RlenStream {
         sub_streams = block.getPayloads();
 
         decoders = new DescriptorDecoder[sub_streams.length];
-        for(byte substream_index=0; substream_index < sub_streams.length; substream_index++){
+        for(byte substream_index = 0; substream_index < sub_streams.length; substream_index++){
             decoders[substream_index] = conf.getDescriptorDecoder(
                     sub_streams[substream_index],
                     DESCRIPTOR_ID.RLEN,
@@ -86,6 +83,7 @@ public class RlenStream {
             short number_of_alignedRecordSegments,
             int[][] hardClipsLength
     ) throws IOException {
+        long[] read_len;
         read_len = new long[number_of_record_segments];
 
         if(reads_length == 0){
@@ -104,9 +102,10 @@ public class RlenStream {
                 }
             }
         }
-
-        long[][] splicedSegLength = new long[MAX_NUM_TEMPLATE_SEGMENTS][1];
+        int[] numberOfSplicedSegments = new int[number_of_record_segments];
+        long[][] splicedSegLength = new long[number_of_record_segments][1];
         for(int segment_i=0; segment_i<number_of_record_segments; segment_i++){
+            numberOfSplicedSegments[segment_i] = 1;
             splicedSegLength[segment_i][0] = read_len[segment_i];
         }
 
@@ -131,9 +130,10 @@ public class RlenStream {
                 }while (remainingLen > 0);
 
                 splicedSegLength[segment_i] = Arrays.copyOf(splicedSegLength[segment_i], number_splices);
+                numberOfSplicedSegments[segment_i] = number_splices;
             }
         }
-        return new RlenStreamSymbol(read_len, splicedSegLength);
+        return new RlenStreamSymbol(read_len, splicedSegLength, numberOfSplicedSegments);
     }
 
     public boolean hasNext() throws IOException {

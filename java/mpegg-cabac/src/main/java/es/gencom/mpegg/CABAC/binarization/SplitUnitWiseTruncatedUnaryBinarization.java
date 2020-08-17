@@ -45,7 +45,7 @@ public class SplitUnitWiseTruncatedUnaryBinarization extends TruncatedUnaryBinar
     private final int c_max; // last fraction cMax or 0 if all fractions are equal
     private final long mask;
 
-    public SplitUnitWiseTruncatedUnaryBinarization(byte splitUnitSize, byte outputSymSize) {
+    public SplitUnitWiseTruncatedUnaryBinarization(final byte splitUnitSize, final byte outputSymSize) {
         this(BINARIZATION_ID.SUTU, splitUnitSize, outputSymSize);
     }
 

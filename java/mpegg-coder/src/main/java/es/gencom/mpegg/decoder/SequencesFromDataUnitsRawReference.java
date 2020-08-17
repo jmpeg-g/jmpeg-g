@@ -27,7 +27,7 @@ package es.gencom.mpegg.decoder;
 
 import es.gencom.mpegg.format.SequenceIdentifier;
 import es.gencom.mpegg.io.Payload;
-import es.gencom.mpegg.coder.dataunits.DataUnitRawReference;
+import es.gencom.mpegg.dataunits.DataUnitRawReference;
 
 import java.io.IOException;
 
@@ -48,11 +48,6 @@ public class SequencesFromDataUnitsRawReference extends AbstractSequencesSource 
             }
         }
         throw new IndexOutOfBoundsException();
-    }
-
-    @Override
-    public String getSequenceName(SequenceIdentifier sequenceId) {
-        return sequencesNames[sequenceId.getSequenceIdentifier()];
     }
 
     @Override

@@ -25,15 +25,17 @@
 
 package es.gencom.integration.bam;
 
+import es.gencom.integration.gzip.BGZFInputStream;
 import es.gencom.integration.io.DataReaderHelper;
 import es.gencom.integration.io.DataWriterHelper;
+import es.gencom.integration.sam.CIGAR;
+import es.gencom.integration.sam.CIGAROperation;
 import es.gencom.integration.sam.SAMRecord;
 import es.gencom.integration.sam.SAMTag;
 import es.gencom.integration.sam.tag.SAMTagEnum;
 import es.gencom.integration.sam.SequenceRecord;
 import es.gencom.integration.sam.tag.MD;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -51,12 +53,19 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
     private int refID;
     private int l_seq;
     private int next_refID;
-    private short bin;
     
     private byte[] seq;
     private byte[] qual;
     private byte[] auxiliary;
+
+    private short bin;
+    private long index;
     
+    public BAMRecord() {}
+    
+    private BAMRecord(final long index) {
+        this.index = index;
+    }
     /**
      * Returns BAI index bin as in SAMv1 4.2.1
      * 
@@ -70,6 +79,10 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
         return BAI.reg2bin(pos - 1, getPositionEnd());
     }
 
+    public long getIndex() {
+        return index;
+    }
+    
     public int getRefID() {
         return refID;
     }
@@ -110,6 +123,16 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
     @Override
     public byte[] getQualityBytes(){
         return qual;
+    }
+
+
+    public short[][] getQualityBytesAllDepths(){
+        //todo add using the original qualities
+        short[][] qualityAllDepths = new short[qual.length][];
+        for(int qual_i=0; qual_i < qual.length; qual_i++){
+            qualityAllDepths[qual_i] = new short[]{qual[qual_i]};
+        }
+        return qualityAllDepths;
     }
     
     @Override
@@ -178,8 +201,9 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
         if (auxiliary == null) {
             auxiliary = data;
         } else {
+            int currentLength = auxiliary.length;
             auxiliary = Arrays.copyOf(auxiliary, auxiliary.length + data.length);
-            System.arraycopy(data, 0, auxiliary, auxiliary.length, data.length);
+            System.arraycopy(data, 0, auxiliary, currentLength, data.length);
         }
         return (T)old_tag;
     }
@@ -229,9 +253,13 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
                 ch1 == tag.charAt(1)) {
                 return buf;
             }
-            SAMTagEnum.decode(tag, buf);
+            SAMTagEnum.decode(String.valueOf(new char[]{ch0, ch1}), buf);
         }
         return null;
+    }
+
+    public CIGAR getCIGAROperations() {
+        return cigar == null ? new CIGAR() : new CIGAR(cigar);
     }
 
     /**
@@ -366,10 +394,11 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
         }
     }
 
-    public static BAMRecord decode(final InputStream in) 
+    public static BAMRecord decode(final BGZFInputStream in) 
                         throws IOException, DataFormatException {
         
-        final BAMRecord record = new BAMRecord();
+        final long index = in.count() | (in.getBlockPosition() << 16);
+        final BAMRecord record = new BAMRecord(index);
 
         final long block_size = DataReaderHelper.readUnsignedInt(in);
 
@@ -444,5 +473,49 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
             record.auxiliary = null;
         }
         return record;
+    }
+
+    public String getGroup() {
+        SAMTag tag = getTag(SAMTagEnum.RG);
+        return (String) tag.getTagValue();
+    }
+
+    public long[] getMappingQualityAllQualities() {
+        return new long[]{getMappingQuality()};
+    }
+
+    public boolean isPrimary(){
+        return (flag & 0x100) == 0;
+    }
+
+    public boolean isSecondary(){
+        return (flag & 0x100) == 0;
+    }
+
+    public void setSecondary(boolean value){
+        if(value) {
+            flag |= 0x100;
+        } else {
+            flag &= ~0x100;
+        }
+    }
+
+    public void setPrimary(boolean value){
+        if(value) {
+            flag &= ~0x100;
+        } else {
+            flag |= 0x100;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "BAMRecord{" +
+                "refID=" + refID +
+                ", pos=" + pos +
+                ", next_pos=" + next_pos +
+                ", qname='" + qname + '\'' +
+                ", rname='" + rname + '\'' +
+                '}';
     }
 }

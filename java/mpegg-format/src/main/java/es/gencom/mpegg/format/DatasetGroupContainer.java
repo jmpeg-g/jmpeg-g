@@ -51,6 +51,7 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
     private LabelList label_list;
     private List<DatasetContainer> datasetContainers;
     private DatasetGroupMetadata datasetGroupMetadata;
+    private DatasetGroupProtection datasetGroupProtection;
 
     public DatasetGroupContainer() {
         super(KEY);
@@ -64,7 +65,6 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
         return datasetGroupProtection;
     }
 
-    private DatasetGroupProtection datasetGroupProtection;
     public List<DatasetContainer> getListDatasetContainer() {
         return datasetContainers;
     }
@@ -129,13 +129,16 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
     }
 
     public LabelList getLabelList() {
+        if (label_list == null) {
+            label_list = new LabelList();
+        }
         return label_list;
     }
     
     public void setLabelList(final LabelList label_list) {
         this.label_list = label_list;
     }
-    
+
     public List<DatasetContainer> getDatasetContainers() {
         if (datasetContainers == null) {
             datasetContainers = new ArrayList<>();
@@ -169,7 +172,7 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
     }
     
     @Override
-    public void write(final MPEGWriter writer) throws IOException, InvalidMPEGStructure {
+    public void write(final MPEGWriter writer) throws IOException, InvalidMPEGStructureException {
         dataset_group_header.writeWithHeader(writer);
         for(Reference reference : references) {
             reference.writeWithHeader(writer);
@@ -193,7 +196,7 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
 
     @Override
     public DatasetGroupContainer read(final MPEGReader reader, final long size) 
-            throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException, InvalidMPEGGFileException {
+            throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException, InvalidMPEGGFileException {
 
         references = new ArrayList<>();
         
@@ -206,7 +209,7 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
 
         header = Header.read(reader);
         while(Reference.KEY.equals(header.key)){
-            references.add(new Reference().read(reader, header.getContentSize()));
+            references.add(Reference.readReference(reader));
             header = Header.read(reader);
         }
 
@@ -242,17 +245,17 @@ public class DatasetGroupContainer extends GenInfo<DatasetGroupContainer> {
         if(DatasetGroupProtection.KEY.equals(header.key)){
             datasetGroupProtection = new DatasetGroupProtection().read(reader, header.getContentSize());
         } else {
-            throw new InvalidMPEGStructure("Dataset group container does not contain element of type: "+header.key);
+            throw new InvalidMPEGStructureException("Dataset group container does not contain element of type: "+header.key);
         }
 
-        if(size != size()){
+        if(size != size()) {
             throw new ParsedSizeMismatchException();
         }
 
         return this;
     }
-    
-    public static class InvalidDatasetGroupException extends InvalidMPEGStructure {
+
+    public static class InvalidDatasetGroupException extends InvalidMPEGStructureException {
         public InvalidDatasetGroupException(String message) {
             super(message);
         }

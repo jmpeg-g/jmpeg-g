@@ -56,9 +56,9 @@ public class DescriptorStreamContainer extends GenInfo<DescriptorStreamContainer
     }
 
     @Override
-    public void write(final MPEGWriter writer) throws IOException, InvalidMPEGStructure {
+    public void write(final MPEGWriter writer) throws IOException, InvalidMPEGStructureException {
         if(descriptor_stream_header == null){
-            throw new InvalidMPEGStructure("Missing mandatory descriptor stream header.");
+            throw new InvalidMPEGStructureException("Missing mandatory descriptor stream header.");
         }
         descriptor_stream_header.writeWithHeader(writer);
         payload.rewind();
@@ -67,11 +67,11 @@ public class DescriptorStreamContainer extends GenInfo<DescriptorStreamContainer
 
     @Override
     public DescriptorStreamContainer read(final MPEGReader reader, final long size) 
-            throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException {
+            throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException {
 
         final Header header = Header.read(reader);
         if(!descriptor_stream_header.key.equals(header.key)) {
-            throw new InvalidMPEGStructure("The expected descriptor stream header is not found");
+            throw new InvalidMPEGStructureException("The expected descriptor stream header is not found");
         }
         descriptor_stream_header.read(reader, header.getContentSize());
         final long descriptorStreamHeaderSize = descriptor_stream_header.sizeWithHeader();

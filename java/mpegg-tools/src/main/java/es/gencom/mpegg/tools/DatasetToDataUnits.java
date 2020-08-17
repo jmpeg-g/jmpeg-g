@@ -2,13 +2,15 @@ package es.gencom.mpegg.tools;
 
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
 import es.gencom.mpegg.io.MSBitBuffer;
 import es.gencom.mpegg.io.Payload;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnitHeader;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,7 +32,14 @@ public class DatasetToDataUnits {
                 datasetContainer,
                 sequenceIdentifier,
                 start,
-                end
+                end,
+                new DATA_CLASS[]{
+                        DATA_CLASS.CLASS_P,
+                        DATA_CLASS.CLASS_N,
+                        DATA_CLASS.CLASS_M,
+                        DATA_CLASS.CLASS_I,
+                        DATA_CLASS.CLASS_HM
+                }
         );
         return dataUnitsExtractor.constructDataUnits();
     }
@@ -49,9 +58,19 @@ public class DatasetToDataUnits {
         DataUnitsExtractor dataUnitsExtractor = new DataUnitsExtractor(reference);
         addParameters(dataUnitsExtractor, datasetContainer);
         for(SequenceIdentifier sequenceIdentifier : datasetContainer.getDatasetHeader().getSeqIds()){
-            getDataUnits(dataUnitsExtractor, datasetContainer, sequenceIdentifier, 0, Long.MAX_VALUE);
+            getDataUnits(dataUnitsExtractor, datasetContainer, sequenceIdentifier, 0, Long.MAX_VALUE,
+                new DATA_CLASS[]{
+                    DATA_CLASS.CLASS_P,
+                    DATA_CLASS.CLASS_N,
+                    DATA_CLASS.CLASS_M,
+                    DATA_CLASS.CLASS_I,
+                    DATA_CLASS.CLASS_HM
+                }
+            );
         }
-        getUnmappedDataUnits(dataUnitsExtractor, datasetContainer);
+        if(datasetContainer.getDatasetHeader().getNumberUAccessUnits() > 0) {
+            getUnmappedDataUnits(dataUnitsExtractor, datasetContainer);
+        }
         return dataUnitsExtractor.constructDataUnits();
     }
 
@@ -60,25 +79,26 @@ public class DatasetToDataUnits {
             DatasetContainer datasetContainer,
             SequenceIdentifier sequenceIdentifier,
             long start,
-            long end
+            long end,
+            DATA_CLASS[] data_classes
     ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException, NoSuchFieldException {
-        if(datasetContainer.getDatasetHeader().isBlockHeader()){
-            if(!datasetContainer.getDatasetHeader().isMIT()){
+        if(datasetContainer.getDatasetHeader().isBlockHeaderFlag()) {
+            if(!datasetContainer.getDatasetHeader().isMIT()) {
                 addDataUnitsBlockHeadersNoMIT(
                         dataUnitsExtractor,
                         datasetContainer,
                         sequenceIdentifier,
                         start,
-                        end
-                );
+                        end,
+                        data_classes);
             } else {
                 addDataUnitsBlockHeadersMIT(
                         dataUnitsExtractor,
                         datasetContainer,
                         sequenceIdentifier,
                         start,
-                        end
-                );
+                        end,
+                        data_classes);
             }
         } else {
             getDataUnitsNoBlockHeader(
@@ -86,7 +106,8 @@ public class DatasetToDataUnits {
                     datasetContainer,
                     sequenceIdentifier,
                     start,
-                    end
+                    end,
+                    data_classes
             );
         }
     }
@@ -97,8 +118,8 @@ public class DatasetToDataUnits {
     ) throws IOException {
 
 
-        if(datasetContainer.getDatasetHeader().isBlockHeader()){
-            if(!datasetContainer.getDatasetHeader().isMIT()){
+        if(datasetContainer.getDatasetHeader().isBlockHeaderFlag()) {
+            if(!datasetContainer.getDatasetHeader().isMIT()) {
                 addDataUnitsBlockHeadersNoMITUnmapped(dataUnitsExtractor, datasetContainer);
             } else {
                 addDataUnitsBlockHeadersMITUnmapped(dataUnitsExtractor, datasetContainer);
@@ -122,9 +143,9 @@ public class DatasetToDataUnits {
         }
         for(int block_i=0; block_i<unmappedBlocksNumber; block_i++){
             AccessUnitContainer accessUnitContainer = datasetContainer.getUnalignedAccessUnitContainer(block_i);
-            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClass_ids();
+            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClassIDs();
 
-            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+            DataUnitAccessUnitHeader header = new DataUnitAccessUnitHeader(
                     block_i,
                     accessUnitContainer.getAccessUnitHeader().getNumberOfBlocks(),
                     accessUnitContainer.getAccessUnitHeader().getParameterSetID(),
@@ -153,7 +174,7 @@ public class DatasetToDataUnits {
             }
 
             int numDescriptors = descriptor_ids.length;
-            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[numDescriptors];
+            AccessUnitBlock[] blocks = new AccessUnitBlock[numDescriptors];
 
             DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
                     accessUnitContainer.getAccessUnitHeader().getParameterSetID()
@@ -200,15 +221,15 @@ public class DatasetToDataUnits {
                     allSubsequences.rewind();
                     long blockSize = allSubsequences.remaining();
 
-                    Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                    Payload[] subsequences = AccessUnitBlock.readSubsequences(
                             DESCRIPTOR_ID.getDescriptorId(descriptor_id),
                             encodingParameters,
-                            header.getAU_type(),
+                            header.au_type,
                             allSubsequences,
                             blockSize
                     );
 
-                    blocks[descriptor_i] = new DataUnitAccessUnit.Block(
+                    blocks[descriptor_i] = new AccessUnitBlock(
                             DESCRIPTOR_ID.getDescriptorId(descriptor_id),
                             subsequences
                     );
@@ -232,14 +253,30 @@ public class DatasetToDataUnits {
             DatasetContainer datasetContainer,
             SequenceIdentifier sequenceIdentifier,
             long start,
-            long end) 
+            long end, DATA_CLASS[] data_classes_requested)
             throws SequenceNotAvailableException, DataClassNotFoundException, IOException, NoSuchFieldException {
 
         DatasetSequenceIndex datasetSequenceIndex = datasetContainer.getSequenceIndex(sequenceIdentifier);
         long referenceBlocksNum = datasetContainer.getDatasetHeader().getReferenceSequenceBlocks(datasetSequenceIndex);
         for(int block_i=0; block_i<referenceBlocksNum; block_i++){
-            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClass_ids();
+            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClassIDs();
             for(int dataClass_i = 0; dataClass_i < dataClasses.length; dataClass_i++){
+
+                boolean isClassIncluded = false;
+                if(data_classes_requested == null) {
+                    isClassIncluded = true;
+                } else {
+                    for (DATA_CLASS data_class_requested : data_classes_requested) {
+                        if (data_class_requested == dataClasses[dataClass_i]) {
+                            isClassIncluded = true;
+                            break;
+                        }
+                    }
+                }
+                if(!isClassIncluded){
+                    continue;
+                }
+
                 DATA_CLASS dataClass = dataClasses[dataClass_i];
                 DataClassIndex dataClassIndex = datasetContainer.getDatasetHeader().getClassIndex(dataClass);
 
@@ -279,12 +316,12 @@ public class DatasetToDataUnits {
                                 + datasetContainer.getDatasetHeader().getThreshold(sequenceIndex)
                                 + 2* 100;
 
-                boolean isOverlapping = Long.max(start, maximum_accessUnitEnd) <= Long.max(end, accessUnitStart);
+                boolean isOverlapping = Long.max(start, accessUnitStart) <= Long.min(end, maximum_accessUnitEnd);
                 if(!isOverlapping){
                     continue;
                 }
 
-                DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+                DataUnitAccessUnitHeader header = new DataUnitAccessUnitHeader(
                         au_id_triplet.getAuId(),
                         accessUnitContainer.getAccessUnitHeader().getNumberOfBlocks(),
                         accessUnitContainer.getAccessUnitHeader().getParameterSetID(),
@@ -307,7 +344,7 @@ public class DatasetToDataUnits {
                         accessUnitContainer.getAccessUnitHeader().getAUType()
                 );
                 int numDescriptors = descriptor_ids.length;
-                DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[numDescriptors];
+                AccessUnitBlock[] blocks = new AccessUnitBlock[numDescriptors];
 
                 DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
                         accessUnitContainer.getAccessUnitHeader().getParameterSetID()
@@ -355,17 +392,17 @@ public class DatasetToDataUnits {
                     allSubsequences.rewind();
                     long blockSize = allSubsequences.remaining();
 
-                    Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                    Payload[] subsequences = AccessUnitBlock.readSubsequences(
                             DESCRIPTOR_ID.getDescriptorId(descriptor_id),
                             encodingParameters,
-                            header.getAU_type(),
+                            header.au_type,
                             allSubsequences,
                             blockSize
                     );
 
 
 
-                    blocks[descriptor_i] = new DataUnitAccessUnit.Block(
+                    blocks[descriptor_i] = new AccessUnitBlock(
                             DESCRIPTOR_ID.getDescriptorId(descriptor_id),
                             subsequences
                     );
@@ -382,7 +419,7 @@ public class DatasetToDataUnits {
         }
     }
 
-    private static void addParameters(
+    public static void addParameters(
             DataUnitsExtractor dataUnitsExtractor,
             DatasetContainer datasetContainer
     ) throws IOException {
@@ -405,14 +442,18 @@ public class DatasetToDataUnits {
     }
 
     private static void addDataUnitsBlockHeadersNoMIT(
-        DataUnitsExtractor dataUnitsExtractor,
-        DatasetContainer datasetContainer,
-        SequenceIdentifier sequenceIdentifier,
-        long start,
-        long end
+            DataUnitsExtractor dataUnitsExtractor,
+            DatasetContainer datasetContainer,
+            SequenceIdentifier sequenceIdentifier,
+            long start,
+            long end,
+            DATA_CLASS[] data_classes
     ) throws IOException {
 
         for(AccessUnitContainer accessUnitContainer : datasetContainer.getAccessUnitContainers()){
+            if(accessUnitContainer.getAccessUnitHeader().getAUType() == DATA_CLASS.CLASS_U){
+                continue;
+            }
             if(!accessUnitContainer.getAccessUnitHeader().getSequenceID().equals(sequenceIdentifier)){
                 continue;
             }
@@ -430,17 +471,32 @@ public class DatasetToDataUnits {
                     + datasetContainer.getDatasetHeader().getThreshold(sequenceIndex)
                     + 2* 100;
 
-            boolean isOverlapping = Long.max(start, maximum_accessUnitEnd) <= Long.max(end, accessUnitStart);
+            boolean isOverlapping = Long.max(start, accessUnitStart) <= Long.min(end, maximum_accessUnitEnd);
             if(!isOverlapping){
                 continue;
             }
 
-            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+            boolean isClassToBeIncluded = false;
+            if(data_classes == null){
+                isClassToBeIncluded = true;
+            }else {
+                for (DATA_CLASS data_class : data_classes) {
+                    if (data_class == accessUnitContainer.getAccessUnitHeader().getAUType()) {
+                        isClassToBeIncluded = true;
+                        break;
+                    }
+                }
+            }
+            if(!isClassToBeIncluded){
+                continue;
+            }
+
+            DataUnitAccessUnitHeader header = new DataUnitAccessUnitHeader(
                     accessUnitContainer.getAccessUnitHeader()
             );
 
 
-            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[accessUnitContainer.getBlocks().size()];
+            AccessUnitBlock[] blocks = new AccessUnitBlock[accessUnitContainer.getBlocks().size()];
 
             DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
                     accessUnitContainer.getAccessUnitHeader().getParameterSetID()
@@ -451,20 +507,20 @@ public class DatasetToDataUnits {
             encodingParameters.read(new MSBitBuffer(byteBuffer));
 
             for(int i=0; i<blocks.length; i++){
-                Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
+                es.gencom.mpegg.format.Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
 
                 Payload allSubsequences = accessUnitBlock.getPayload();
                 allSubsequences.rewind();
                 long blockSize = allSubsequences.remaining();
 
-                Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                Payload[] subsequences = AccessUnitBlock.readSubsequences(
                         DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                         encodingParameters,
-                        header.getAU_type(),
+                        header.au_type,
                         allSubsequences,
                         blockSize);
 
-                blocks[i] = new DataUnitAccessUnit.Block(
+                blocks[i] = new AccessUnitBlock(
                         DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                         subsequences);
             }
@@ -489,12 +545,12 @@ public class DatasetToDataUnits {
                 continue;
             }
 
-            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+            DataUnitAccessUnitHeader header = new DataUnitAccessUnitHeader(
                     accessUnitContainer.getAccessUnitHeader()
             );
 
 
-            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[accessUnitContainer.getBlocks().size()];
+            AccessUnitBlock[] blocks = new AccessUnitBlock[accessUnitContainer.getBlocks().size()];
 
             DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
                     accessUnitContainer.getAccessUnitHeader().getParameterSetID()
@@ -505,20 +561,20 @@ public class DatasetToDataUnits {
             encodingParameters.read(new MSBitBuffer(byteBuffer));
 
             for(int i=0; i<blocks.length; i++){
-                Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
+                es.gencom.mpegg.format.Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
 
                 Payload allSubsequences = accessUnitBlock.getPayload();
                 allSubsequences.rewind();
                 long blockSize = allSubsequences.remaining();
 
-                Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                Payload[] subsequences = AccessUnitBlock.readSubsequences(
                         DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                         encodingParameters,
-                        header.getAU_type(),
+                        header.au_type,
                         allSubsequences,
                         blockSize);
 
-                blocks[i] = new DataUnitAccessUnit.Block(
+                blocks[i] = new AccessUnitBlock(
                         DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                         subsequences);
             }
@@ -542,7 +598,7 @@ public class DatasetToDataUnits {
         for(int uAccessUnit_i = 0; uAccessUnit_i < numberUAccessUnits; uAccessUnit_i++) {
             AccessUnitContainer accessUnitContainer = datasetContainer.getUnalignedAccessUnitContainer(uAccessUnit_i);
 
-            DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+            DataUnitAccessUnitHeader header = new DataUnitAccessUnitHeader(
                     uAccessUnit_i,
                     accessUnitContainer.getAccessUnitHeader().getNumberOfBlocks(),
                     accessUnitContainer.getAccessUnitHeader().getParameterSetID(),
@@ -561,7 +617,7 @@ public class DatasetToDataUnits {
             );
 
 
-            DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[accessUnitContainer.getBlocks().size()];
+            AccessUnitBlock[] blocks = new AccessUnitBlock[accessUnitContainer.getBlocks().size()];
 
             DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
                     accessUnitContainer.getAccessUnitHeader().getParameterSetID()
@@ -572,20 +628,20 @@ public class DatasetToDataUnits {
             encodingParameters.read(new MSBitBuffer(byteBuffer));
 
             for(int i=0; i<blocks.length; i++){
-                Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
+                es.gencom.mpegg.format.Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
 
                 Payload allSubsequences = accessUnitBlock.getPayload();
                 allSubsequences.rewind();
                 long blockSize = allSubsequences.remaining();
 
-                Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                Payload[] subsequences = AccessUnitBlock.readSubsequences(
                         DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                         encodingParameters,
-                        header.getAU_type(),
+                        header.au_type,
                         allSubsequences,
                         blockSize);
 
-                blocks[i] = new DataUnitAccessUnit.Block(
+                blocks[i] = new AccessUnitBlock(
                         DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                         subsequences
                 );
@@ -606,13 +662,31 @@ public class DatasetToDataUnits {
             DatasetContainer datasetContainer,
             SequenceIdentifier sequenceIdentifier,
             long start,
-            long end
+            long end,
+            DATA_CLASS[] data_classes_requested
     ) throws IOException, SequenceNotAvailableException, DataClassNotFoundException {
         DatasetSequenceIndex datasetSequenceIndex = datasetContainer.getSequenceIndex(sequenceIdentifier);
         long referenceBlocksNum = datasetContainer.getDatasetHeader().getReferenceSequenceBlocks(datasetSequenceIndex);
         for(int block_i=0; block_i<referenceBlocksNum; block_i++){
-            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClass_ids();
+            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClassIDs();
             for(int dataClass_i = 0; dataClass_i < dataClasses.length; dataClass_i++){
+
+
+                boolean isClassIncluded = false;
+                if(data_classes_requested == null){
+                    isClassIncluded = true;
+                } else {
+                    for (DATA_CLASS data_class_requested : data_classes_requested) {
+                        if (data_class_requested == dataClasses[dataClass_i]) {
+                            isClassIncluded = true;
+                            break;
+                        }
+                    }
+                }
+                if(!isClassIncluded){
+                    continue;
+                }
+
                 AU_Id_triplet au_id_triplet = new AU_Id_triplet(
                         datasetSequenceIndex,
                         datasetContainer.getDatasetHeader().getClassIndex(dataClasses[dataClass_i]),
@@ -648,12 +722,12 @@ public class DatasetToDataUnits {
                                 + datasetContainer.getDatasetHeader().getThreshold(sequenceIndex)
                                 + 2* 100;
 
-                boolean isOverlapping = Long.max(start, maximum_accessUnitEnd) <= Long.max(end, accessUnitStart);
+                boolean isOverlapping = Long.max(start, accessUnitStart) <= Long.min(end, maximum_accessUnitEnd);
                 if(!isOverlapping){
                     continue;
                 }
 
-                DataUnitAccessUnit.DataUnitAccessUnitHeader header = new DataUnitAccessUnit.DataUnitAccessUnitHeader(
+                DataUnitAccessUnitHeader header = new DataUnitAccessUnitHeader(
                         au_id_triplet.getAuId(),
                         accessUnitContainer.getAccessUnitHeader().getNumberOfBlocks(),
                         accessUnitContainer.getAccessUnitHeader().getParameterSetID(),
@@ -672,7 +746,7 @@ public class DatasetToDataUnits {
                 );
 
 
-                DataUnitAccessUnit.Block[] blocks = new DataUnitAccessUnit.Block[accessUnitContainer.getBlocks().size()];
+                AccessUnitBlock[] blocks = new AccessUnitBlock[accessUnitContainer.getBlocks().size()];
 
                 DatasetParameterSet parameterSet = datasetContainer.getDatasetParameterSetById(
                         accessUnitContainer.getAccessUnitHeader().getParameterSetID()
@@ -683,23 +757,22 @@ public class DatasetToDataUnits {
                 encodingParameters.read(new MSBitBuffer(byteBuffer));
 
                 for(int i=0; i<blocks.length; i++){
-                    Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
+                    es.gencom.mpegg.format.Block accessUnitBlock = accessUnitContainer.getBlocks().get(i);
 
                     Payload allSubsequences = accessUnitBlock.getPayload();
                     allSubsequences.rewind();
                     long blockSize = allSubsequences.remaining();
 
-                    Payload[] subsequences = DataUnitAccessUnit.Block.readSubsequences(
+                    Payload[] subsequences = AccessUnitBlock.readSubsequences(
                             DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
                             encodingParameters,
-                            header.getAU_type(),
+                            header.au_type,
                             allSubsequences,
                             blockSize);
 
-                    blocks[i] = new DataUnitAccessUnit.Block(
+                    blocks[i] = new AccessUnitBlock(
                             DESCRIPTOR_ID.getDescriptorId(accessUnitBlock.getBlockHeader().getDescriptorId()),
-                            subsequences
-                    );
+                            subsequences);
                 }
                 DataUnitAccessUnit dataUnitAccessUnit = new DataUnitAccessUnit(
                         header,

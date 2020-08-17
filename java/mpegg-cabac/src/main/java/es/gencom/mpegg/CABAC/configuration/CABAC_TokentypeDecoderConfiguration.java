@@ -134,9 +134,16 @@ public class CABAC_TokentypeDecoderConfiguration
 
     @Override
     public void write(final MPEGWriter writer) throws IOException {
+        super.write(writer);
+        
         writer.writeUnsignedByte(rle_guard_tokentype);
         tokentype_order0_config.write(writer);
         tokentype_order1_config.write(writer);
+    }
+
+    @Override
+    public int getNumberSubsequences() {
+        return 2;
     }
 
     @Override

@@ -27,7 +27,25 @@ package es.gencom.mpegg.coder.quality;
 
 public abstract class AbstractQualityBook {
 
+    /**
+     *
+     * @return Return the number of entries (i.e. the number of unique qualities which are configured in the quality
+     * book
+     */
     public abstract byte getNumberEntries();
+
+    /**
+     * Returns the entry index which minimizes the distance to the quality given as parameter
+     * @param qualitySAM the quality value to encode. It must be a valid quality.
+     * @return entry index minimizing distance to the value of qualitySAM
+     */
     public abstract short encode(short qualitySAM);
+
+    /**
+     *
+     * @param encodedQuality the quality book entry for which the associated quality must be returned. The parameter
+     *                       value must be between 0 (included) and the number of entries (excluded)
+     * @return the quality value associated to the entry index given as input
+     */
     public abstract short decode(short encodedQuality);
 }

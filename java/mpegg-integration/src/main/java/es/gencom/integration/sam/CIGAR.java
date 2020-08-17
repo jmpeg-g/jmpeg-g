@@ -25,7 +25,12 @@
 
 package es.gencom.integration.sam;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,18 +38,20 @@ import java.util.regex.Pattern;
  * @author Dmitry Repchevsky
  */
 
-public class CIGAR {
+public class CIGAR implements Iterable<Map.Entry<Byte, Long>> {
     private final static String CIGAR = "MIDNSHP=X";
     private final static Pattern PATTERN = Pattern.compile("([0-9]+)([MIDNSHP=X]{1})");
 
     private int length;
     private long[] cigar;
 
-    public CIGAR(String cigar) {
+    public CIGAR() {}
+    
+    public CIGAR(final String cigar) {
         this.cigar = encode(cigar);
     }
     
-    protected CIGAR(final long[] cigar) {
+    public CIGAR(final long[] cigar) {
         this.cigar = cigar;
     }
 
@@ -60,6 +67,20 @@ public class CIGAR {
         return cigar != null ? parse(cigar) : "";
     }
     
+    @Override
+    public Iterator<Map.Entry<Byte, Long>> iterator() {
+        List<Map.Entry<Byte, Long>> operations = new ArrayList<>();
+        if (cigar != null) {
+            for (int i = 0, n = cigar.length; i < n; i++) {
+                final long cigar_op = cigar[i];
+                final int op = (int)(cigar_op & 0x0F);
+                final long op_len = cigar_op >>> 4;
+                operations.add(new AbstractMap.SimpleImmutableEntry<>((byte)CIGAR.charAt(op), op_len));
+            }
+        }
+        return operations.iterator();
+    }
+
     /**
      * Encodes CIGAR string into binary BAM representation
      * 

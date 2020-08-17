@@ -26,11 +26,11 @@
 package es.gencom.mpegg.decoder.descriptors.streams;
 
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -45,7 +45,7 @@ public class MMposStream {
 
     public MMposStream(
             DATA_CLASS dataClass,
-            DataUnitAccessUnit.Block block,
+            AccessUnitBlock block,
             EncodingParameters encodingParameters) {
 
         this.dataClass = dataClass;

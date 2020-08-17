@@ -9,9 +9,8 @@ import java.nio.ByteBuffer;
 
 public class DatasetToRequiredReferenceRanges {
     public static RequiredRanges getRequiredReferenceRanges(
-            DatasetGroupContainer datasetGroupContainer,
             DatasetContainer datasetContainer
-    ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException, NoSuchFieldException {
+    ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException {
         RequiredRanges requiredRanges = new RequiredRanges();
 
         for(SequenceIdentifier sequenceIdentifier : datasetContainer.getDatasetHeader().getSeqIds()){
@@ -31,7 +30,7 @@ public class DatasetToRequiredReferenceRanges {
             SequenceIdentifier sequenceIdentifier,
             long start,
             long end
-    ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException, NoSuchFieldException {
+    ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException {
         RequiredRanges requiredRanges = new RequiredRanges();
         getRequiredReferenceRanges(
                 requiredRanges,
@@ -50,7 +49,7 @@ public class DatasetToRequiredReferenceRanges {
             long start,
             long end
     ) throws IOException, DataClassNotFoundException, SequenceNotAvailableException {
-        if(datasetContainer.getDatasetHeader().isBlockHeader()){
+        if(datasetContainer.getDatasetHeader().isBlockHeaderFlag()){
             if(!datasetContainer.getDatasetHeader().isMIT()){
                 getRequiredReferenceRangesNoMIT(
                         requiredRanges,
@@ -89,7 +88,7 @@ public class DatasetToRequiredReferenceRanges {
         DatasetSequenceIndex datasetSequenceIndex = datasetContainer.getSequenceIndex(sequenceIdentifier);
         long referenceBlocksNum = datasetContainer.getDatasetHeader().getReferenceSequenceBlocks(datasetSequenceIndex);
         for(int block_i=0; block_i<referenceBlocksNum; block_i++){
-            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClass_ids();
+            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClassIDs();
             for(int dataClass_i = 0; dataClass_i < dataClasses.length; dataClass_i++){
                 DATA_CLASS dataClass = dataClasses[dataClass_i];
                 DataClassIndex dataClassIndex = datasetContainer.getDatasetHeader().getClassIndex(dataClass);
@@ -134,7 +133,7 @@ public class DatasetToRequiredReferenceRanges {
                                 + datasetContainer.getDatasetHeader().getThreshold(sequenceIndex)
                                 + encodingParameters.getReadsLength();
 
-                boolean isOverlapping = Long.max(start, maximum_accessUnitEnd) <= Long.max(end, accessUnitStart);
+                boolean isOverlapping = Long.max(start, accessUnitStart) <= Long.min(end, maximum_accessUnitEnd);
                 if(!isOverlapping){
                     continue;
                 }
@@ -159,6 +158,9 @@ public class DatasetToRequiredReferenceRanges {
     ) throws IOException {
 
         for(AccessUnitContainer accessUnitContainer : datasetContainer.getAccessUnitContainers()){
+            if(accessUnitContainer.getAccessUnitHeader().getAUType() == DATA_CLASS.CLASS_U){
+                continue;
+            }
             if(!accessUnitContainer.getAccessUnitHeader().getSequenceID().equals(sequenceIdentifier)){
                 continue;
             }
@@ -185,7 +187,7 @@ public class DatasetToRequiredReferenceRanges {
                             + datasetContainer.getDatasetHeader().getThreshold(sequenceIndex)
                             + encodingParameters.getReadsLength();
 
-            boolean isOverlapping = Long.max(start, maximum_accessUnitEnd) <= Long.max(end, accessUnitStart);
+            boolean isOverlapping = Long.max(start, accessUnitStart) <= Long.min(end, maximum_accessUnitEnd);
             if(!isOverlapping){
                 continue;
             }
@@ -205,7 +207,7 @@ public class DatasetToRequiredReferenceRanges {
         DatasetSequenceIndex datasetSequenceIndex = datasetContainer.getSequenceIndex(sequenceIdentifier);
         long referenceBlocksNum = datasetContainer.getDatasetHeader().getReferenceSequenceBlocks(datasetSequenceIndex);
         for(int block_i=0; block_i<referenceBlocksNum; block_i++){
-            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClass_ids();
+            DATA_CLASS[] dataClasses = datasetContainer.getDatasetHeader().getClassIDs();
             for(int dataClass_i = 0; dataClass_i < dataClasses.length; dataClass_i++){
                 AU_Id_triplet au_id_triplet = new AU_Id_triplet(
                         datasetSequenceIndex,
@@ -246,7 +248,7 @@ public class DatasetToRequiredReferenceRanges {
                                 + datasetContainer.getDatasetHeader().getThreshold(sequenceIndex)
                                 + encodingParameters.getReadsLength();
 
-                boolean isOverlapping = Long.max(start, maximum_accessUnitEnd) <= Long.max(end, accessUnitStart);
+                boolean isOverlapping = Long.max(start, accessUnitStart) <= Long.min(end, maximum_accessUnitEnd);
                 if(!isOverlapping){
                     continue;
                 }

@@ -27,10 +27,10 @@ package es.gencom.mpegg.decoder.descriptors.streams;
 
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -40,12 +40,11 @@ public class RGroupStream {
     private final int numberReadGroups;
 
     public RGroupStream(
-            final DataUnitAccessUnit.Block block,
-            final int numberReadGroups,
+            final AccessUnitBlock block,
             final DATA_CLASS dataClass,
             final EncodingParameters encodingParameters) throws IOException {
         
-        this.numberReadGroups = numberReadGroups;
+        this.numberReadGroups = encodingParameters.getNumberOfGroups();
         DescriptorDecoderConfiguration conf = 
                 encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.RGROUP, dataClass);
 

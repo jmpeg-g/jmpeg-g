@@ -1,8 +1,9 @@
 package es.gencom.mpegg.tools;
 
 import es.gencom.mpegg.Record;
+import es.gencom.mpegg.ReverseCompType;
 import es.gencom.mpegg.SplitType;
-import es.gencom.mpegg.coder.MPEGCodification.AccessUnitEncoders.Operation;
+import es.gencom.mpegg.encoder.Operation;
 import es.gencom.mpegg.format.SequenceIdentifier;
 
 import java.util.Collection;
@@ -16,81 +17,74 @@ public class SAMReadsCollection implements Iterable<SAMLikeAlignment> {
         this.samReads = new TreeSet<>();
     }
 
-    public void addRead(Record record){
-        if(record.getRecordSegments() > 2){
+    public void addRead(Record record) {
+        if (record.getNumRecordSegments() > 2) {
             throw new UnsupportedOperationException();
         }
 
+        for (int segment_i = 0; segment_i < record.getNumRecordSegments(); segment_i++) {
+            int numAlignmentsForSegment = record.getNumAlignmentsForSegment(segment_i);
+            if (numAlignmentsForSegment == 0) {
+                addUnmappedRead(record, segment_i);
+            } else {
+                addMappedRead(record, segment_i, numAlignmentsForSegment);
+            }
+        }
+    }
 
-        for(int alignment_i=0; alignment_i < record.getMappingPositionsSegment0().length; alignment_i++){
-            long[][] mappingPositions = record.getMappingPositionsSegment0();
-            if(mappingPositions[alignment_i].length == 0){
-                throw new InternalError();
-            } else if (mappingPositions[alignment_i].length > 1){
+    private void addMappedRead(Record record, int segment_i, int numAlignmentsForSegment) {
+        long[][][] mappingPositions = record.getMappingPositions();
+        for(int alignment_i=0; alignment_i < numAlignmentsForSegment; alignment_i++) {
+            int numSplices = mappingPositions[alignment_i][segment_i].length;
+
+            if(numSplices == 0){
+                throw new IllegalArgumentException();
+            }
+            if(numSplices > 1){
                 throw new UnsupportedOperationException();
             }
 
-            boolean noMate;
-            boolean mateUnmapped;
-            boolean mateOnReverse;
-            SequenceIdentifier mateSequenceIdentifier;
-            long matePosition;
-            if(record.getSplitMate()[0] != SplitType.Unpaired){
-                noMate = false;
-
-                int[] alignmentsSegment1 = record.getAlignmentIndexesSegment1(alignment_i);
-                if(alignmentsSegment1.length == 0) {
-                    throw new InternalError();
-                }else if(alignmentsSegment1.length > 1){
-                    throw new UnsupportedOperationException();
-                }
-
-                if(
-                        record.getSplitMate()[alignmentsSegment1[0]] == SplitType.UnmappedOtherRecord
-                                || record.getSplitMate()[alignmentsSegment1[0]] == SplitType.UnmappedSameRecord
-                ){
-                    mateUnmapped = true;
-                    mateOnReverse = false;
-                    mateSequenceIdentifier = null;
-                    matePosition = 0;
-                }else {
-                    mateUnmapped = false;
-                    mateOnReverse = record.getReverseCompliment()[1][
-                            record.getAlignmentIndexesSegment1(alignment_i)[0]
-                            ][0];
-                    mateSequenceIdentifier = record.getSequenceIdSegment1()[
-                            record.getAlignmentIndexesSegment1(alignment_i)[0]
-                            ];
-                    matePosition = record.getMappingPositionsSegment1()[
-                            record.getAlignmentIndexesSegment1(alignment_i)[0]
-                            ][0];
-                }
-            }else{
-                noMate = true;
-                mateUnmapped = false;
-                mateOnReverse = false;
-                mateSequenceIdentifier = null;
-                matePosition = 0;
-            }
-
-            byte[][] operationsMerged = new byte[record.getOperationType()[0][alignment_i].length][];
-            int[][] operationLengthsMerged = new int[record.getOperationLength()[0][alignment_i].length][];
-            for(int splice_i=0; splice_i < operationsMerged.length; splice_i++){
+            byte[][] operationsMerged = new byte[numSplices][];
+            int[][] operationLengthsMerged = new int[numSplices][];
+            for(int splice_i=0; splice_i < numSplices; splice_i++){
                 SAMLikeAlignment.mergeOperations(
-                        record.getOperationType()[0][alignment_i],
-                        record.getOperationLength()[0][alignment_i],
+                        record.getOperationType()[alignment_i][segment_i],
+                        record.getOperationLength()[alignment_i][segment_i],
                         operationsMerged,
                         operationLengthsMerged,
                         splice_i
                 );
             }
 
-            SAMLikeAlignment samLikeSegment0 = new SAMLikeAlignment(
+            boolean noMate = false;
+            if(record.getNumRecordSegments() == 0 || record.getSplitMate()[0][(segment_i+1)%record.getNumTemplateSegments()] == SplitType.Unpaired){
+                noMate = true;
+            }
+
+            SequenceIdentifier mateSequenceIdentifier = null;
+            long matePosition = 0;
+            boolean mateUnmapped = true;
+            boolean mateOnReverse = true;
+
+            if(!noMate){
+                int indexNextMate = (segment_i+1)%record.getNumTemplateSegments();
+                mateSequenceIdentifier = record.getMappingSequence()[0][indexNextMate];
+                matePosition = mappingPositions[0][indexNextMate][0];
+                SplitType splitType = record.getSplitMate()[0][indexNextMate];
+                mateUnmapped = splitType == SplitType.UnmappedSameRecord
+                        || splitType == SplitType.UnmappedDifferentRecordSameAU
+                        || splitType == SplitType.UnmappedDifferentRecordDifferentAU;
+                if(record.getNumTemplateSegments() == record.getNumAlignedSegments()) {
+                    mateOnReverse = record.getReverseCompliment()[0][indexNextMate][0] == ReverseCompType.Reverse;
+                }
+            }
+
+            SAMLikeAlignment samLikeSegment = new SAMLikeAlignment(
                     record.getReadName(),
                     record.getSequenceId(),
-                    mappingPositions[alignment_i][0],
-                    record.getSequenceBytes()[0],
-                    record.getQualityValues()[0][0],
+                    mappingPositions[alignment_i][segment_i][0],
+                    record.getSequenceBytes()[segment_i],
+                    record.getQualityValues()[segment_i][0],
                     SAMLikeAlignment.getCigarString(
                             operationsMerged,
                             operationLengthsMerged
@@ -98,9 +92,9 @@ public class SAMReadsCollection implements Iterable<SAMLikeAlignment> {
                     SAMLikeAlignment.getMDTag(
                             operationsMerged,
                             operationLengthsMerged,
-                            record.getOriginalBase()[0][alignment_i]
+                            record.getOriginalBase()[alignment_i][segment_i]
                     ),
-                    record.getReverseCompliment()[0][alignment_i][0],
+                    record.getReverseCompliment()[alignment_i][segment_i][0] == ReverseCompType.Reverse,
                     noMate,
                     mateSequenceIdentifier,
                     matePosition,
@@ -108,105 +102,66 @@ public class SAMReadsCollection implements Iterable<SAMLikeAlignment> {
                     record.isUnpaired() || !record.isUnpaired() && !record.isRead1First(),
                     record.isUnpaired(),
                     mateUnmapped,
-                    mateOnReverse
+                    mateOnReverse,
+                    (short)record.getMapping_score()[alignment_i][segment_i][0],
+                    record.getGroupId()
             );
-            samReads.add(samLikeSegment0);
+            samReads.add(samLikeSegment);
         }
+    }
 
-        if(!(
-                record.getSplitMate()[0] == SplitType.SameRecord ||
-                        record.getSplitMate()[0] == SplitType.UnmappedSameRecord)
-        ) {
-            return;
-        }
+    private void addUnmappedRead(Record record, int segment_i) {
+        long mappingPositionToReport = 0;
+        String cigarString = "*";
+        String mdTag = null;
+        boolean isOnReverseToReport = false;
+        SequenceIdentifier mateSequenceIdentifier = null;
 
-        for(int alignment_i=0; alignment_i < record.getMappingPositionsSegment1().length; alignment_i++){
-            if(record.getSplitMate()[alignment_i] != SplitType.UnmappedSameRecord) {
-                long[][] mappingPositions = record.getMappingPositionsSegment1();
-                if (mappingPositions[alignment_i].length == 0) {
-                    throw new InternalError();
-                } else if (mappingPositions[alignment_i].length > 1) {
-                    throw new UnsupportedOperationException();
-                }
+        boolean noMate = false;
+        boolean mateUnmapped = false;
+        boolean mateOnReverse = false;
+        long matePosition = 0;
 
-                boolean noMate = false;
-                boolean mateUnmapped = false;
-                boolean mateOnReverse = record.getReverseCompliment()[0][0][0];
-                SequenceIdentifier mateSequenceIdentifier = record.getSequenceId();
-                long matePosition = record.getMappingPositionsSegment0()[0][0];
+        if(record.getNumRecordSegments() > 0) {
+            noMate = true;
+            int nextSegmentIndex = (segment_i + 1) % record.getNumTemplateSegments();
+            SplitType splitType = record.getSplitMate()[0][nextSegmentIndex];
+            mateUnmapped = splitType == SplitType.UnmappedSameRecord
+                    || splitType == SplitType.UnmappedDifferentRecordSameAU
+                    || splitType == SplitType.UnmappedDifferentRecordDifferentAU;
 
-                byte[][] operationsMerged = new byte[record.getOperationType()[1][alignment_i].length][];
-                int[][] operationLengthsMerged = new int[record.getOperationLength()[1][alignment_i].length][];
-                for (int splice_i = 0; splice_i < operationsMerged.length; splice_i++) {
-                    SAMLikeAlignment.mergeOperations(
-                            record.getOperationType()[1][alignment_i],
-                            record.getOperationLength()[1][alignment_i],
-                            operationsMerged,
-                            operationLengthsMerged,
-                            splice_i
-                    );
-                }
-
-                SAMLikeAlignment samLikeSegment1 = new SAMLikeAlignment(
-                        record.getReadName(),
-                        record.getSequenceIdSegment1()[0],
-                        mappingPositions[alignment_i][0],
-                        record.getSequenceBytes()[1],
-                        record.getQualityValues()[1][0],
-                        SAMLikeAlignment.getCigarString(
-                                operationsMerged,
-                                operationLengthsMerged),
-                        SAMLikeAlignment.getMDTag(
-                                operationsMerged,
-                                operationLengthsMerged,
-                                record.getOriginalBase()[1][alignment_i]),
-                        record.getReverseCompliment()[1][alignment_i][0],
-                        noMate,
-                        mateSequenceIdentifier,
-                        matePosition,
-                        !record.isRead1First(),
-                        record.isUnpaired() || !record.isUnpaired() && record.isRead1First(),
-                        record.isUnpaired(),
-                        mateUnmapped,
-                        mateOnReverse
-                );
-                samReads.add(samLikeSegment1);
-            }else{
-                long[][] mappingPositions = record.getMappingPositionsSegment0();
-                if (mappingPositions[alignment_i].length == 0) {
-                    throw new InternalError();
-                } else if (mappingPositions[alignment_i].length > 1) {
-                    throw new UnsupportedOperationException();
-                }
-
-                boolean noMate = false;
-                boolean mateUnmapped = false;
-                boolean mateOnReverse = record.getReverseCompliment()[0][0][0];
-                SequenceIdentifier mateSequenceIdentifier = record.getSequenceId();
-                long matePosition = record.getMappingPositionsSegment0()[0][0];
-
-
-                SAMLikeAlignment samLikeSegment1 = new SAMLikeAlignment(
-                        record.getReadName(),
-                        record.getSequenceId(),
-                        mappingPositions[alignment_i][0],
-                        record.getSequenceBytes()[1],
-                        record.getQualityValues()[1][0],
-                        "*",
-                        null,
-                        record.getReverseCompliment()[0][0][0],
-                        noMate,
-                        mateSequenceIdentifier,
-                        matePosition,
-                        !record.isRead1First(),
-                        record.isUnpaired() || !record.isUnpaired() && record.isRead1First(),
-                        record.isUnpaired(),
-                        mateUnmapped,
-                        mateOnReverse
-                );
-                samReads.add(samLikeSegment1);
+            if(!mateUnmapped){
+                mappingPositionToReport = record.getMappingPositions()[0][nextSegmentIndex][0];
+                mateOnReverse = record.getReverseCompliment()[0][nextSegmentIndex][0] == ReverseCompType.Reverse;
+                mateSequenceIdentifier = record.getMappingSequence()[0][nextSegmentIndex];
+                matePosition = mappingPositionToReport;
             }
         }
+
+
+        SAMLikeAlignment samLikeSegment1 = new SAMLikeAlignment(
+                record.getReadName(),
+                record.getSequenceId(),
+                mappingPositionToReport,
+                record.getSequenceBytes()[segment_i],
+                record.getQualityValues()[segment_i][0],
+                cigarString,
+                mdTag,
+                isOnReverseToReport,
+                noMate,
+                mateSequenceIdentifier,
+                matePosition,
+                !record.isRead1First(),
+                record.isUnpaired() || !record.isUnpaired() && record.isRead1First(),
+                record.isUnpaired(),
+                mateUnmapped,
+                mateOnReverse,
+                (short)0,
+                record.getGroupId()
+        );
+        samReads.add(samLikeSegment1);
+
+
     }
 
     @Override

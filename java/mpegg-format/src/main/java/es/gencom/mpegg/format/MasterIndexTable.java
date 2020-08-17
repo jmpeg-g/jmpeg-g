@@ -154,7 +154,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                     }
 
 
-                    if (!dataset_header.isBlockHeader()) {
+                    if (!dataset_header.isBlockHeaderFlag()) {
                         for (int desc_id = 0; desc_id < block_byte_offset[seq][ci][au_id].length; desc_id++) {
                             writer.writeBits(block_byte_offset[seq][ci][au_id][desc_id], byte_offset_size);
                         }
@@ -197,7 +197,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                 }
                 writer.flush();
             }
-            if (!dataset_header.isBlockHeader()) {
+            if (!dataset_header.isBlockHeaderFlag()) {
                 for (int desc_id = 0; desc_id < u_block_byte_offset[uau_id].length; desc_id++) {
                     writer.writeBits(u_block_byte_offset[uau_id][desc_id], byte_offset_size);
                 }
@@ -237,13 +237,13 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
             au_byte_offset = new long[seq_count][num_classes_aligned][];
 
 
-            if (!dataset_header.isBlockHeader()) {
+            if (!dataset_header.isBlockHeaderFlag()) {
                 block_byte_offset = new long[seq_count][num_classes_aligned][][];
 
                 blockStartsPerClassPerDescriptor = new ArrayList<>(DATA_CLASS.values().length);
 
                 int class_i = 0;
-                for (DATA_CLASS data_class : dataset_header.getClass_ids()) {
+                for (DATA_CLASS data_class : dataset_header.getClassIDs()) {
                     final int num_descriptors = dataset_header.getNumberOfDescriptors(data_class);
                     blockStartsPerClassPerDescriptor.add(new ArrayList<>(num_descriptors));
 
@@ -258,7 +258,10 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
             for (short seq = 0; seq < seq_count; seq++) {
                 final int seq_block = (int) dataset_header.getReferenceSequenceBlocks(new DatasetSequenceIndex(seq));
                 int ci = 0;
-                for (DATA_CLASS data_class : dataset_header.getAlignedClassIds()) {
+                for (DATA_CLASS data_class : dataset_header.getClassIDs()) {
+                    if (data_class == DATA_CLASS.CLASS_U) {
+                        continue;
+                    }
                     au_start_position[seq][ci] = new long[seq_block];
                     au_end_position[seq][ci] = new long[seq_block];
 
@@ -275,7 +278,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
 
                     au_byte_offset[seq][ci] = new long[seq_block];
 
-                    if (!dataset_header.isBlockHeader()) {
+                    if (!dataset_header.isBlockHeaderFlag()) {
                         block_byte_offset[seq][ci] = new long[seq_block][];
                     }
 
@@ -302,7 +305,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                         }
 
 
-                        if (!dataset_header.isBlockHeader()) {
+                        if (!dataset_header.isBlockHeaderFlag()) {
                             final int num_descriptors = dataset_header.getNumberOfDescriptors(data_class);
                             block_byte_offset[seq][ci][au_id] = new long[num_descriptors];
                             for (int desc_id = 0; desc_id < num_descriptors; desc_id++) {
@@ -324,7 +327,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
             if(num_u_access_units != 0) {
                 u_au_byte_offset = new long[num_u_access_units];
                 DataClassIndex dataClassIndex = dataset_header.getClassIndex(DATA_CLASS.CLASS_U);
-                if(!dataset_header.isBlockHeader()) {
+                if(!dataset_header.isBlockHeaderFlag()) {
                     u_block_byte_offset = new long[num_u_access_units][dataset_header.getNumberOfDescriptors(DATA_CLASS.CLASS_U)];
                 }
                 if (dataset_header.getDatasetType() == REFERENCE) {
@@ -364,7 +367,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                             }
                         }
                     }
-                    if(!dataset_header.isBlockHeader()) {
+                    if(!dataset_header.isBlockHeaderFlag()) {
                         for (
                                 int descriptor_i = 0;
                                 descriptor_i < dataset_header.getNumberOfDescriptors(DATA_CLASS.CLASS_U);
@@ -435,7 +438,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                         result += posSize; //extended_au_end
                     }
 
-                    if (!dataset_header.isBlockHeader()) {
+                    if (!dataset_header.isBlockHeaderFlag()) {
                         for (int desc_id = 0; desc_id < block_byte_offset[seq][ci][au_id].length; desc_id++) {
                             result += byte_offset_size; //block_byte_offset
                         }
@@ -479,7 +482,7 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
                     result += Math.ceil(signatureSizeEvaluator.getSizeInBits() / 8);
                 }
             }
-            if (!dataset_header.isBlockHeader()) {
+            if (!dataset_header.isBlockHeaderFlag()) {
                 for (int desc_id = 0; desc_id < u_block_byte_offset[uau_id].length; desc_id++) {
                     result += byte_offset_size; //u_offset
                 }
@@ -562,6 +565,14 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
         return descriptorPositions.higher(currentBlockStart);
     }
 
+    public SequenceIdentifier getAuRefSequence(
+            final DatasetSequenceIndex seq,
+            final DataClassIndex classIndex,
+            final int auId) {
+
+        return ref_sequence_id[seq.getIndex()][classIndex.getIndex()][auId];
+    }
+
     public long getAuStart(
             final DatasetSequenceIndex seq,
             final DataClassIndex classIndex,
@@ -575,12 +586,33 @@ public class MasterIndexTable extends GenInfo<MasterIndexTable> {
         }
     }
 
+    public long getAuRefStart(
+            final DatasetSequenceIndex seq,
+            final DataClassIndex classIndex,
+            final int auId) {
+
+        try {
+            return ref_start_position[seq.getIndex()][classIndex.getIndex()][auId];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
     public long getAuEnd(
             final DatasetSequenceIndex seq,
             final DataClassIndex classIndex,
             final int auId) {
 
         return au_end_position[seq.getIndex()][classIndex.getIndex()][auId];
+    }
+
+    public long getAuRefEnd(
+            final DatasetSequenceIndex seq,
+            final DataClassIndex classIndex,
+            final int auId) {
+
+        return ref_end_position[seq.getIndex()][classIndex.getIndex()][auId];
     }
 
     void setDatasetInitialPosition(final long initialPosition){

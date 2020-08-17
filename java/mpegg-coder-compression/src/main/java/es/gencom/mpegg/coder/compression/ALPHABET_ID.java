@@ -42,6 +42,10 @@ public enum ALPHABET_ID {
     DNA((byte)0, (byte)5),
     IUPAC((byte)1, (byte)16);
 
+    public static final byte ALPHABETS[][] = {
+        {'A', 'C', 'G', 'T', 'N'},
+        {'A', 'C', 'G', 'T', 'R', 'Y', 'S', 'W', 'K', 'M', 'B', 'D', 'H', 'V', 'N', '-'}};
+
     public static final byte ENCODING_SIZE_IN_BITS = 8;
 
     public final byte ID; // u(8)
@@ -52,7 +56,7 @@ public enum ALPHABET_ID {
         this.SIZE = size;
     }
     
-    public static ALPHABET_ID getalphabetId(final byte id) {
+    public static ALPHABET_ID getAlphabetId(final byte id) {
         switch (id) {
            case 0: return DNA;
            case 1: return IUPAC;
@@ -61,10 +65,23 @@ public enum ALPHABET_ID {
     }
     
     public static ALPHABET_ID read(final MPEGReader reader) throws IOException {
-        return getalphabetId((byte)reader.readBits(ENCODING_SIZE_IN_BITS));
+        return getAlphabetId((byte)reader.readBits(ENCODING_SIZE_IN_BITS));
     }
     
     public void write(final MPEGWriter writer) throws IOException {
         writer.writeBits(ID, ENCODING_SIZE_IN_BITS);
+    }
+    
+    public static byte charToId(final ALPHABET_ID alphabet_id, final char charToTranslate){
+        return charToId(ALPHABETS[alphabet_id.ID], Character.toUpperCase(charToTranslate));
+    }
+
+    public static byte charToId(final byte[] alphabet, final char charToTranslate){
+        for(int value = 0; value < alphabet.length; value++) {
+            if(alphabet[value] == charToTranslate) {
+                return (byte)value;
+            }
+        }
+        throw new IllegalArgumentException("char "+charToTranslate+" not present in alphabet");
     }
 }

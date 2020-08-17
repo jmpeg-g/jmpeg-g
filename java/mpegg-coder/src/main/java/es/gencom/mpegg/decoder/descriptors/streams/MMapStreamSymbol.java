@@ -30,7 +30,7 @@ import es.gencom.mpegg.format.SequenceIdentifier;
 public class MMapStreamSymbol {
     private final int numberOfAlignments;
     private final int[] numberOfSegmentAlignments;
-    private final long[] numberOfAlignmentsPairs;
+    private final int[] numberOfAlignmentsPairs;
     private final int[][] alignPtr;
     private final boolean moreAlignments;
     private final SequenceIdentifier moreAlignmentsNextSeqId;
@@ -39,7 +39,7 @@ public class MMapStreamSymbol {
     public MMapStreamSymbol(
             int numberOfAlignments,
             int[] numberOfSegmentAlignments,
-            long[] numberOfAlignmentsPairs,
+            int[] numberOfAlignmentsPairs,
             int[][] alignPtr,
             boolean moreAlignments,
             SequenceIdentifier moreAlignmentsNextSeqId,
@@ -62,7 +62,7 @@ public class MMapStreamSymbol {
         return numberOfSegmentAlignments;
     }
 
-    public long[] getNumberOfAlignmentsPairs() {
+    public int[] getNumberOfAlignmentsPairs() {
         return numberOfAlignmentsPairs;
     }
 
@@ -80,5 +80,15 @@ public class MMapStreamSymbol {
 
     public long getMoreAlignmentsNextPos() {
         return moreAlignmentsNextPos;
+    }
+
+    public int getMaxNumberOfSegmentAlignments() {
+        int max = Integer.MIN_VALUE;
+        for(int segment_i=0; segment_i < numberOfSegmentAlignments.length; segment_i++){
+            if(numberOfSegmentAlignments[segment_i] > max){
+                max = numberOfSegmentAlignments[segment_i];
+            }
+        }
+        return max;
     }
 }

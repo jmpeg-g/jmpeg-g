@@ -26,13 +26,12 @@
 package es.gencom.mpegg.decoder.descriptors.streams;
 
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
-import es.gencom.mpegg.decoder.descriptors.S_alphabets;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -53,7 +52,7 @@ public class ClipsStream {
     private final ALPHABET_ID alphabet_id;
 
     public ClipsStream(
-            final DataUnitAccessUnit.Block block,
+            final AccessUnitBlock block,
             final DATA_CLASS dataClass,
             final EncodingParameters encodingParameters) {
 
@@ -94,7 +93,7 @@ public class ClipsStream {
             int numberOfRecordSegments,
             int numberOfAlignedRecordSegments
     ) throws IOException {
-        byte[] s_alphabet_id = S_alphabets.alphabets[alphabet_id.ID];
+        byte[] s_alphabet_id = ALPHABET_ID.ALPHABETS[alphabet_id.ID];
         soft_clips = new byte[numberOfRecordSegments][MAX_NUM_SOFT_CLIPS][128];
         hard_clips = new int[numberOfRecordSegments][MAX_NUM_SOFT_CLIPS];
         int[][] softClipsLength = new int[numberOfRecordSegments][MAX_NUM_SOFT_CLIPS];

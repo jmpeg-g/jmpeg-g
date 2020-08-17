@@ -227,18 +227,10 @@ public class CABAC_SubsequenceEncodingConfiguration {
 
         final short[][] ctxTable = context_parameters.getContextTable();
 
-        int numContextsLuts = 0;
-        if (symbol_encoding_params.coding_order > 0 && 
-            symbol_encoding_params.transform_ID_subsym == CABAC_SUBSYM_TRANSFORM_ID.LUT_TRANSFORM) {
-            switch(binarization.binarization_id) {
-                case BI:
-                case TU:
-                case EG:
-                case SEG:
-                case TEG:
-                case STEG: numContextsLuts = ((symbol_encoding_params.coding_subsym_size >> 1) + (symbol_encoding_params.coding_subsym_size & 1)) * 3;
-            }
-        }
+        final int numCtxLuts = symbol_encoding_params.coding_order > 0 && 
+                               symbol_encoding_params.transform_ID_subsym == CABAC_SUBSYM_TRANSFORM_ID.LUT_TRANSFORM ?
+                                    ((symbol_encoding_params.coding_subsym_size >> 1) + (symbol_encoding_params.coding_subsym_size & 1)) * 3
+                                    : 0;
 
         return new CodecConfiguration(
                         symbol_encoding_params.coding_order,
@@ -249,7 +241,7 @@ public class CABAC_SubsequenceEncodingConfiguration {
                         context_parameters.share_subsym_ctx_flag,
                         symbol_encoding_params.share_subsym_lut_flag,
                         symbol_encoding_params.share_subsym_prv_flag,
-                        numContextsLuts,
+                        numCtxLuts,
                         codingSizeCtxOffset,
                         (byte)0 /* prvValue */,
                         numCtxSubsym,
@@ -310,18 +302,10 @@ public class CABAC_SubsequenceEncodingConfiguration {
 
         final short[][] ctxTable = context_parameters.getContextTable();
 
-        int numContextsLuts = 0;
-        if (symbol_encoding_params.coding_order > 0 && 
-            symbol_encoding_params.transform_ID_subsym == CABAC_SUBSYM_TRANSFORM_ID.LUT_TRANSFORM) {
-            switch(binarization.binarization_id) {
-                case BI:
-                case TU:
-                case EG:
-                case SEG:
-                case TEG:
-                case STEG: numContextsLuts = ((symbol_encoding_params.coding_subsym_size >> 1) + (symbol_encoding_params.coding_subsym_size & 1)) * 3;
-            }
-        }
+        final int numCtxLuts = symbol_encoding_params.coding_order > 0 && 
+                               symbol_encoding_params.transform_ID_subsym == CABAC_SUBSYM_TRANSFORM_ID.LUT_TRANSFORM ?
+                                    ((symbol_encoding_params.coding_subsym_size >> 1) + (symbol_encoding_params.coding_subsym_size & 1)) * 3
+                                    : 0;
 
         return new CodecConfiguration(
                         symbol_encoding_params.coding_order,
@@ -332,7 +316,7 @@ public class CABAC_SubsequenceEncodingConfiguration {
                         context_parameters.share_subsym_ctx_flag,
                         symbol_encoding_params.share_subsym_lut_flag,
                         symbol_encoding_params.share_subsym_prv_flag,
-                        numContextsLuts,
+                        numCtxLuts,
                         codingSizeCtxOffset,
                         (byte)0 /* prvValue */,
                         numCtxSubsym,

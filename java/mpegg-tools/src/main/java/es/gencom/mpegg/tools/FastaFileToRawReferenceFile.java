@@ -2,11 +2,9 @@ package es.gencom.mpegg.tools;
 
 import es.gencom.integration.fasta.FastaFileReader;
 import es.gencom.integration.fasta.FastaSequence;
-import es.gencom.mpegg.coder.dataunits.DataUnitRawReference;
-import es.gencom.mpegg.io.Payload;
+import es.gencom.mpegg.dataunits.DataUnitRawReference;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

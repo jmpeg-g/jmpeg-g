@@ -1,13 +1,14 @@
 package es.gencom.mpegg.tools.DataUnitsToFile;
 
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.format.*;
 import es.gencom.mpegg.format.ref.Reference;
 import es.gencom.mpegg.io.MSBitOutputArray;
 import es.gencom.mpegg.io.Payload;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -23,7 +24,7 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
             boolean use40BitsPositions,
             short referenceId,
             int default_threshold,
-            Alphabet alphabet
+            ALPHABET alphabet
     ){
         DatasetContainer datasetContainer = new DatasetContainer();
 
@@ -79,8 +80,8 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
             DatasetParameterSet datasetParameterSet = new DatasetParameterSet(
                     datasetGroupContainer.getDatasetGroupHeader().getDatasetGroupId(),
                     (short)datasetContainer.getDatasetHeader().getDatasetId(),
-                    parameters.getParent_parameter_set_ID(),
-                    parameters.getParameter_set_ID(),
+                    parameters.parent_parameter_set_id,
+                    parameters.parameter_set_id,
                     ByteBuffer.wrap(bufferParameter.getArray())
             );
             datasetContainer.addDatasetParameters(datasetParameterSet);
@@ -128,43 +129,43 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
 
         int allocatedUnmappedAUIds = 0;
 
-        for(DataUnitAccessUnit accessUnit : dataUnits.getDataUnitAccessUnits()){
+        for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
             int auId;
-            if(accessUnit.getAUType() == DATA_CLASS.CLASS_U){
+            if(dataUnitAccessUnit.getAUType() == DATA_CLASS.CLASS_U){
                 auId = allocatedUnmappedAUIds;
                 allocatedUnmappedAUIds++;
             } else {
                 auId = allocatedMappedAuIds
-                        [accessUnit.getSequenceId().getSequenceIdentifier()]
-                        [accessUnit.getAUType().ID - 1];
+                        [dataUnitAccessUnit.getSequenceId().getSequenceIdentifier()]
+                        [dataUnitAccessUnit.getAUType().ID - 1];
                 allocatedMappedAuIds
-                        [accessUnit.getSequenceId().getSequenceIdentifier()]
-                        [accessUnit.getAUType().ID - 1]++;
+                        [dataUnitAccessUnit.getSequenceId().getSequenceIdentifier()]
+                        [dataUnitAccessUnit.getAUType().ID - 1]++;
             }
 
-            AccessUnitContainer accessUnitContainer = new AccessUnitContainer(datasetContainer);
+            AccessUnitContainer accessUnitContainer = new AccessUnitContainer(datasetHeader);
             AccessUnitHeader accessUnitHeader = new AccessUnitHeader(
                     datasetHeader,
                     auId,
-                    (byte)accessUnit.getBlocks().length,
-                    accessUnit.getHeader().getParameter_set_ID(),
-                    accessUnit.getHeader().getAU_type(),
-                    (int)accessUnit.getHeader().getRead_count(),
-                    (short)accessUnit.getHeader().getMm_threshold(),
-                    (int)accessUnit.getHeader().getMm_count(),
-                    accessUnit.getHeader().getRef_sequence_id(),
-                    accessUnit.getHeader().getRef_start_position(),
-                    accessUnit.getHeader().getRef_end_position(),
-                    accessUnit.getHeader().getSequence_ID(),
-                    accessUnit.getHeader().getAu_start_position(),
-                    accessUnit.getHeader().getAu_end_position(),
-                    accessUnit.getHeader().getExtended_au_start_position(),
-                    accessUnit.getHeader().getExtended_au_end_position()
+                    (byte)dataUnitAccessUnit.getBlocks().length,
+                    dataUnitAccessUnit.header.parameter_set_id,
+                    dataUnitAccessUnit.header.au_type,
+                    (int)dataUnitAccessUnit.header.read_count,
+                    (short)dataUnitAccessUnit.header.mm_threshold,
+                    (int)dataUnitAccessUnit.header.mm_count,
+                    dataUnitAccessUnit.header.ref_sequence_id,
+                    dataUnitAccessUnit.header.ref_start_position,
+                    dataUnitAccessUnit.header.ref_end_position,
+                    dataUnitAccessUnit.header.sequence_id,
+                    dataUnitAccessUnit.header.au_start_position,
+                    dataUnitAccessUnit.header.au_end_position,
+                    dataUnitAccessUnit.header.extended_au_start_position,
+                    dataUnitAccessUnit.header.extended_au_end_position
             );
 
             accessUnitContainer.setAccessUnitHeader(accessUnitHeader);
-            List<Block> blocks = new ArrayList<>(accessUnit.getBlocks().length);
-            for(DataUnitAccessUnit.Block dataUnitBlock : accessUnit.getBlocks()){
+            List<Block> blocks = new ArrayList<>(dataUnitAccessUnit.getBlocks().length);
+            for(AccessUnitBlock dataUnitBlock : dataUnitAccessUnit.getBlocks()){
                 Block newBlock = new Block(datasetHeader);
 
 
@@ -172,7 +173,7 @@ public class DataUnitsToAUCNoMITDataset extends AbstractDataUnitsToDataset{
                 blockData.rewind();
 
                 newBlock.setBlockHeader(new BlockHeader(
-                        dataUnitBlock.getDescriptorIdentifier().ID,
+                        dataUnitBlock.descriptor_id.ID,
                         blockData.remaining()
                 ));
                 newBlock.setPayload(blockData);

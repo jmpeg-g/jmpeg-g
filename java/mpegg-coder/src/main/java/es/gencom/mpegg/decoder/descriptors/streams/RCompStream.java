@@ -25,12 +25,14 @@
 
 package es.gencom.mpegg.decoder.descriptors.streams;
 
+import es.gencom.mpegg.ReverseCompType;
+import es.gencom.mpegg.SplitType;
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
@@ -39,7 +41,7 @@ public class RCompStream {
     private final DescriptorDecoder decoder;
 
     public RCompStream(
-            DataUnitAccessUnit.Block block,
+            AccessUnitBlock block,
             DATA_CLASS dataClass,
             EncodingParameters encodingParameters) throws IOException {
 
@@ -60,48 +62,31 @@ public class RCompStream {
     }
 
     /**
-     *
+     * @param numberOfAlignedRecordSegments The number of aligned segments in the record
      * @param numberOfSegmentAlignments Number of alignments for each segments
      * @param splicedSegLength Length of splices for the aligned segments
      * @return for each spliced segment for each alignment for each aligned record segments true if on reverse,
      * false otherise
      * @throws IOException
      */
-    public boolean[][][] read(
+    public ReverseCompType[][][] read(
+            int numberOfAlignedRecordSegments,
             int[] numberOfSegmentAlignments,
-            long[][][] splicedSegLength
+            int[] numberOfSplicedSeg,
+            int numMaxNumberAlignments,
+            int numSegments,
+            SplitType[][] splitMate
     ) throws IOException {
-        boolean[][][] reverseComp = new boolean[Math.toIntExact(numberOfSegmentAlignments.length)][][];
+        ReverseCompType[][][] reverseComp = new ReverseCompType[numMaxNumberAlignments][numSegments][];
 
-        for(
-                int segment_i=0;
-                segment_i < numberOfSegmentAlignments.length;
-                segment_i++
-        ){
-            reverseComp[segment_i] = new boolean[numberOfSegmentAlignments[segment_i]][];
-            for(
-                int segmentAlignment_i = 0;
-                segmentAlignment_i < numberOfSegmentAlignments[segment_i];
-                segmentAlignment_i++
-            ){
-                int numberSplices = 1;
-                if(splicedSegLength[segment_i].length != 0){
-                    numberSplices = splicedSegLength[segment_i][segmentAlignment_i].length;
-                }
-                reverseComp[segment_i][segmentAlignment_i] = new boolean[numberSplices];
-
-                for(
-                        long splice_i = 0;
-                        splice_i < splicedSegLength
-                                [Math.toIntExact(segment_i)]
-                                [Math.toIntExact(segmentAlignment_i)].length;
-                        splice_i++
-                ) {
-                    reverseComp
-                            [Math.toIntExact(segment_i)]
-                            [Math.toIntExact(segmentAlignment_i)]
-                            [Math.toIntExact(splice_i)]
-                        = decoder.read() != 0;
+        for(int segment_i = 0; segment_i < numberOfAlignedRecordSegments; segment_i++){
+            for(int alignment_j = 0; alignment_j < numberOfSegmentAlignments[segment_i]; alignment_j++){
+                reverseComp[alignment_j][segment_i] = new ReverseCompType[numberOfSplicedSeg[segment_i]];
+                if(splitMate[alignment_j][segment_i] == SplitType.MappedSameRecord){
+                    for(int splice_k = 0; splice_k < numberOfSplicedSeg[segment_i]; splice_k++){
+                        reverseComp[alignment_j][segment_i][splice_k] =
+                                ReverseCompType.getReverseComp((byte)decoder.read());
+                    }
                 }
             }
         }

@@ -5,8 +5,8 @@ import es.gencom.integration.fasta.FastaSequence;
 import es.gencom.mpegg.io.MPEGWriter;
 import es.gencom.mpegg.io.Payload;
 import es.gencom.mpegg.io.WritableMSBitChannel;
-import es.gencom.mpegg.coder.dataunits.DataUnitRawReference;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitRawReference;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.nio.file.*;

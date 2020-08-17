@@ -28,18 +28,69 @@ package es.gencom.mpegg.decoder.descriptors.streams;
 //import es.gencom.mpeg.io.ByteReader;
 //import java.io.IOException;
 
+import es.gencom.mpegg.SplitType;
+import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
+import es.gencom.mpegg.coder.compression.DescriptorDecoder;
+import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.coder.configuration.EncodingParameters;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
+import es.gencom.mpegg.format.DATA_CLASS;
+
+import java.io.IOException;
+
 public class MScoreStream {
-//    private final ByteReader streams;
-//
-//    private int j9_0 = 0;
-//    private double mscore;
-//
-//    public MScoreStream(ByteReader streams) {
-//        this.streams = streams;
-//    }
-//
-//    public void read() throws IOException {
-//        mscore = streams.readDouble();
-//        j9_0++;
-//    }
+    private final DescriptorDecoder decoder;
+    private final byte as_depth;
+
+    public MScoreStream(
+            DATA_CLASS dataClass,
+            AccessUnitBlock block,
+            EncodingParameters encodingParameters) {
+        as_depth = encodingParameters.getASDepth();
+
+
+        DescriptorDecoderConfiguration conf =
+                encodingParameters.getDecoderConfiguration(DESCRIPTOR_ID.MSCORE, dataClass);
+
+        if(block == null) {
+            decoder = null;
+            return;
+        }
+
+        decoder = conf.getDescriptorDecoder(
+                block.getPayloads()[0],
+                DESCRIPTOR_ID.MSCORE,
+                0,
+                encodingParameters.getAlphabetId()
+        );
+
+
+    }
+
+
+    public long[][][] read(
+            int numberOfAlignedRecordSegments,
+            int[] numberOfSegmentAlignments,
+            SplitType[][] splitTypes
+    ) throws IOException {
+        int maxNumAlignedSegments = 0;
+
+        for(int segment_i=0; segment_i < numberOfAlignedRecordSegments; segment_i++){
+            maxNumAlignedSegments = Integer.max(maxNumAlignedSegments, numberOfSegmentAlignments[segment_i]);
+        }
+
+        long[][][] mappingScores = new long[maxNumAlignedSegments][numberOfAlignedRecordSegments][as_depth];
+
+        for(int i=0; i < as_depth; i++){
+            for(int segment_i=0; segment_i<numberOfAlignedRecordSegments; segment_i++){
+                for(int alignment_i=0; alignment_i < numberOfSegmentAlignments[segment_i]; alignment_i++){
+                    if(splitTypes[alignment_i][segment_i] == SplitType.MappedSameRecord) {
+                        mappingScores[alignment_i][segment_i][i] = decoder.read();
+                    }
+                }
+            }
+        }
+
+        return mappingScores;
+    }
 }

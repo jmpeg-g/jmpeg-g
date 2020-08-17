@@ -90,6 +90,85 @@ public class BAMFileReader implements Iterable<BAMRecord> {
         return stream.header;
     }
     
+    public int getRefCount() {
+        return stream.getRefCount();
+    }
+
+    public String getRefName(final int idRef) {
+        return stream.getRefName(idRef);
+    }
+
+    /**
+     * Read BAM record by its index.
+     * 
+     * @param index BAM index of the record
+     * @return the BAM record at the BAM file index position
+     * 
+     * @throws IOException
+     * @throws DataFormatException 
+     */
+    public BAMRecord read(final long index) throws IOException, DataFormatException {
+        final long current = stream.index();
+        stream.move(index);
+        final BAMRecord record = BAMRecord.decode(stream);
+        stream.move(current);
+        return record;
+    }
+
+    /**
+     * Read all BAM records by the position range.
+     * 
+     * @param idRef the reference to search
+     * @param start the start position to search
+     * @param end the last position to search
+     * 
+     * @return a list of found records
+     * 
+     * @throws IOException
+     * @throws DataFormatException 
+     */
+    public List<BAMRecord> search(final int idRef, 
+                                  final int start, 
+                                  final int end) throws IOException, DataFormatException {
+
+        final List<BAMRecord> alignments = new ArrayList();
+        
+        final Bin[] bins = bai.indexes[idRef];
+        if (bins != null) {
+            final long current = stream.index();
+
+            final int[] nbins = BAI.reg2bins(start, end);
+            for (int i = 0; i < nbins.length; i++) {
+                final Bin bin = bins[nbins[i]];
+
+                if(bin == null){
+                    continue;
+                }
+                final int n_chunk = bin.chunk_beg.length;
+                for (int j = 0; j < n_chunk; j++) {
+                    final long chunk_beg = bin.chunk_beg[j];
+                    final long chunk_end = bin.chunk_end[j];
+
+                    stream.move(chunk_beg);
+                    while (stream.available() >= 0 && stream.index() < chunk_end) {
+                        final BAMRecord record = BAMRecord.decode(stream);
+                        if (record.getPositionStart() < end && record.getPositionEnd() > start) {
+                            alignments.add(record);
+                        }
+                        record.setRName(stream.getRefName(idRef));
+                        final int next_ref_id = record.getNextRefID();
+                        if (next_ref_id >= 0 && next_ref_id < stream.getRefCount()) {
+                            record.setRNameNext(stream.getRefName(next_ref_id));
+                        }
+                    }
+                }
+            }
+            stream.move(current);
+        }
+        
+        return alignments;
+    }
+
     /**
      * <p>
      * Get BAM records iterator.
@@ -116,41 +195,6 @@ public class BAMFileReader implements Iterable<BAMRecord> {
         return new BAMRecordsIterator(stream);
     }
 
-    public List<BAMRecord> search(final int idRef, 
-                                  final int start, 
-                                  final int end) throws IOException, DataFormatException {
-
-        final List<BAMRecord> alignments = new ArrayList();
-        
-        final Bin[] bins = bai.indexes[idRef];
-        if (bins != null) {
-            final int[] nbins = BAI.reg2bins(start, end);
-            for (int i = 0; i < nbins.length; i++) {
-                final Bin bin = bins[nbins[i]];
-                final int n_chunk = bin.chunk_beg.length;
-                for (int j = 0; j < n_chunk; j++) {
-                    final long chunk_beg = bin.chunk_beg[j];
-                    final long chunk_end = bin.chunk_end[j];
-
-                    stream.move(chunk_beg);
-                    while (stream.available() >= 0 && stream.index() < chunk_end) {
-                        final BAMRecord record = BAMRecord.decode(stream);
-                        if (record.getPositionStart() < end && record.getPositionEnd() > start) {
-                            alignments.add(record);
-                        }
-                        record.setRName(stream.getRefName(idRef));
-                        final int next_ref_id = record.getNextRefID();
-                        if (next_ref_id >= 0 && next_ref_id < stream.getRefCount()) {
-                            record.setRNameNext(stream.getRefName(next_ref_id));
-                        }
-                    }
-                }
-            }
-        }
-        
-        return alignments;
-    }
-
     private BAI saveIndex(final Path fbam, final Path fbai) throws IOException, DataFormatException {
         bai = makeIndex(fbam);
         try (OutputStream out = Files.newOutputStream(fbai)) {
@@ -165,11 +209,24 @@ public class BAMFileReader implements Iterable<BAMRecord> {
         }
     }
 
-    public int getRefCount() {
-        return stream.getRefCount();
+    public long getMaxDistanceToPosition(final int idRef, int position){
+        final int[] binIds = BAI.reg2bins(position, position);
+
+        for(int bin_i = binIds.length - 1; bin_i >= 0; bin_i--) {
+            final int binId = binIds[bin_i];
+            final Bin[] bins = bai.indexes[idRef];
+            Bin bin = bins[binId];
+
+            if(bin!=null) {
+                final int n_chunk = bin.chunk_beg.length;
+                return stream.getPositionTo(bin.chunk_end[n_chunk - 1]);
+            }
+        }
+
+        throw new IllegalArgumentException();
     }
 
-    public String getRefName(final int idRef) {
-        return stream.getRefName(idRef);
+    public long getIndex() throws IOException {
+        return stream.index();
     }
 }

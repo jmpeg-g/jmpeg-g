@@ -1,14 +1,30 @@
 package es.gencom.mpegg.tools.DataUnitsToFile;
 
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
-import es.gencom.mpegg.format.*;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.format.ref.Reference;
 import es.gencom.mpegg.format.signatures.Signature;
 import es.gencom.mpegg.io.MSBitOutputArray;
 import es.gencom.mpegg.io.Payload;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnits;
+import es.gencom.mpegg.format.ALPHABET;
+import es.gencom.mpegg.format.AccessUnitContainer;
+import es.gencom.mpegg.format.AccessUnitHeader;
+import es.gencom.mpegg.format.Block;
+import es.gencom.mpegg.format.BlockHeader;
+import es.gencom.mpegg.format.DATA_CLASS;
+import es.gencom.mpegg.format.DataClassIndex;
+import es.gencom.mpegg.format.DataClassNotFoundException;
+import es.gencom.mpegg.format.DatasetContainer;
+import es.gencom.mpegg.format.DatasetGroupContainer;
+import es.gencom.mpegg.format.DatasetHeader;
+import es.gencom.mpegg.format.DatasetParameterSet;
+import es.gencom.mpegg.format.DatasetSequenceIndex;
+import es.gencom.mpegg.format.DatasetType;
+import es.gencom.mpegg.format.MasterIndexTable;
+import es.gencom.mpegg.format.SequenceIdentifier;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,7 +38,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
     private void scanDataUnitsAndUpdateMasterIndex(DataUnits dataUnits, DatasetContainer datasetContainer)
             throws IOException {
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()) {
-            addDataUnit((int)dataUnitAccessUnit.getHeader().getAccess_unit_ID(), dataUnitAccessUnit, datasetContainer);
+            addDataUnit((int)dataUnitAccessUnit.header.access_unit_id, dataUnitAccessUnit, datasetContainer);
         }
         createMasterIndexTable(datasetContainer,0);
         DatasetHeader datasetHeader = datasetContainer.getDatasetHeader();
@@ -44,41 +60,36 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
                 datasetContainer.getDatasetHeader(),
                 auId,
                 (byte)dataUnit.getBlocks().length,
-                dataUnit.getHeader().getParameter_set_ID(),
-                dataUnit.getHeader().getAU_type(),
-                (int)dataUnit.getHeader().getRead_count(),
-                (short)dataUnit.getHeader().getMm_threshold(),
-                (int)dataUnit.getHeader().getMm_count(),
-                dataUnit.getHeader().getRef_sequence_id(),
-                dataUnit.getHeader().getRef_start_position(),
-                dataUnit.getHeader().getRef_end_position(),
-                dataUnit.getHeader().getSequence_ID(),
-                dataUnit.getHeader().getAu_start_position(),
-                dataUnit.getHeader().getAu_end_position(),
-                dataUnit.getHeader().getExtended_au_start_position(),
-                dataUnit.getHeader().getExtended_au_end_position()
+                dataUnit.header.parameter_set_id,
+                dataUnit.header.au_type,
+                (int)dataUnit.header.read_count,
+                (short)dataUnit.header.mm_threshold,
+                (int)dataUnit.header.mm_count,
+                dataUnit.header.ref_sequence_id,
+                dataUnit.header.ref_start_position,
+                dataUnit.header.ref_end_position,
+                dataUnit.header.sequence_id,
+                dataUnit.header.au_start_position,
+                dataUnit.header.au_end_position,
+                dataUnit.header.extended_au_start_position,
+                dataUnit.header.extended_au_end_position
         );
 
         AccessUnitContainer accessUnitContainer = new AccessUnitContainer(
-                datasetContainer,
-                accessUnitHeader
-        );
+                datasetContainer.getDatasetHeader(),
+                accessUnitHeader);
 
-        for(DataUnitAccessUnit.Block block : dataUnit.getBlocks()){
+        for(AccessUnitBlock block : dataUnit.getBlocks()){
             Block accessUnitContainerBlock = new Block(datasetContainer.getDatasetHeader());
             Payload payload = block.getDescriptorSpecificData();
 
-
             accessUnitContainerBlock.setBlockHeader(new BlockHeader(
-                block.getDescriptorIdentifier().ID,
-                (int) payload.size()
-            ));
-            accessUnitContainerBlock.setPayload(
-                    payload
-            );
-            accessUnitContainer.addBlock(
-                accessUnitContainerBlock
-            );
+                block.descriptor_id.ID,
+                (int) payload.size()));
+            
+            accessUnitContainerBlock.setPayload(payload);
+
+            accessUnitContainer.addBlock(accessUnitContainerBlock);
         }
 
         if(dataUnit.getAUType() != DATA_CLASS.CLASS_U) {
@@ -102,7 +113,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
                 if (!indexationInfos.containsKey(sequenceId)) {
                     continue;
                 }
-                for (DATA_CLASS classId : datasetHeader.getClass_ids()) {
+                for (DATA_CLASS classId : datasetHeader.getClassIDs()) {
                     if (classId != DATA_CLASS.CLASS_U) {
                         if (!indexationInfos.get(sequenceId).containsKey(classId)) {
                             throw new IllegalArgumentException();
@@ -128,11 +139,11 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
                 DatasetSequenceIndex datasetSequenceIndex = new DatasetSequenceIndex(sequenceIndex);
 
                 short sequenceId = (short) datasetHeader.getSeqIds()[sequenceIndex].getSequenceIdentifier();
-                au_start_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-                au_end_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-                extended_au_start_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-                extended_au_end_position[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
-                au_byte_offset[sequenceIndex] = new long[datasetHeader.getNumberOfClasses()][];
+                au_start_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+                au_end_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+                extended_au_start_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+                extended_au_end_position[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
+                au_byte_offset[sequenceIndex] = new long[datasetHeader.getNumberAlignedClasses()][];
 
                 if (!indexationInfos.containsKey(new SequenceIdentifier(sequenceId))) {
                     continue;
@@ -214,7 +225,7 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
             boolean use40BitsPositions,
             short referenceId,
             int default_threshold,
-            Alphabet alphabet) throws IOException {
+            ALPHABET alphabet) throws IOException {
         DatasetContainer datasetContainer = new DatasetContainer();
 
         DatasetType dataset_type = inferDatasetType(dataUnits);
@@ -252,8 +263,8 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
             DatasetParameterSet datasetParameterSet = new DatasetParameterSet(
                     datasetGroupContainer.getDatasetGroupHeader().getDatasetGroupId(),
                     (short)datasetContainer.getDatasetHeader().getDatasetId(),
-                    parameters.getParent_parameter_set_ID(),
-                    parameters.getParameter_set_ID(),
+                    parameters.parent_parameter_set_id,
+                    parameters.parameter_set_id,
                     ByteBuffer.wrap(bufferParameter.getArray())
             );
             datasetContainer.addDatasetParameters(datasetParameterSet);
@@ -315,6 +326,12 @@ public class DataUnitsToAUCMITDataset extends AbstractDataUnitsToDataset{
                     datasetContainer.addAccessUnit(indexInfo.getAccessUnitContainer());
                 }
             }
+        }
+        for(
+                AccessUnitContainer accessUnitContainer :
+                unmappedAccessUnitContainers
+        ){
+            datasetContainer.addAccessUnit(accessUnitContainer);
         }
     }
 }

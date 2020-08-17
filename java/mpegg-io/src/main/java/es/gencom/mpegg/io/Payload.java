@@ -60,11 +60,11 @@ public class Payload implements MPEGReader, MPEGWriter {
         idx = 0;
     }
 
-    public Payload(byte[] bytes) {
+    public Payload(final byte[] bytes) {
         this(ByteBuffer.wrap(bytes));
     }
 
-    public void position(long newPosition){
+    public void position(final long newPosition) {
         long currentPosition = 0;
         idx = 0;
         bits_left = 0;
@@ -98,11 +98,12 @@ public class Payload implements MPEGReader, MPEGWriter {
 
     @Override
     public void align() {
-        if(idx == buf.length) return;
-        buf[idx].position(buf[idx].position() - (bits_left >>> 3));
+        if(idx < buf.length) {
+            buf[idx].position(buf[idx].position() - (bits_left >>> 3));
+        }
         bits_left = 0;
     }
-
+    
     private ByteBuffer[] slicePayloads(long size) throws EOFException {
         align();
         final int x = idx;
@@ -137,27 +138,32 @@ public class Payload implements MPEGReader, MPEGWriter {
 
         return result;
     }
-
+    
     @Override
     public ByteBuffer readByteBuffer(final int size) throws IOException {
-        if(size < 0){
+        if(size < 0) {
             throw new IllegalArgumentException();
         }
-        if(idx == buf.length){
+        if(idx == buf.length) {
             throw new EOFException();
         }
+        
         align();
-        if(size < buf[idx].remaining()){
-            ByteBuffer result = buf[idx].slice();
+        
+        if(size < buf[idx].remaining()) {
+            final ByteBuffer result = buf[idx].slice();
             result.limit(size);
+            buf[idx].position(buf[idx].position() + size);
+            return result;
         }
-        if(size > remaining()){
+
+        if(size > remaining()) {
             throw new EOFException();
         }
-        byte arrayBuffer[]= new byte[size];
+        final byte arrayBuffer[]= new byte[size];
         int copied = 0;
         while(copied < size){
-            int toCopy = Math.min(buf[idx].remaining(), size-copied);
+            final int toCopy = Math.min(buf[idx].remaining(), size - copied);
             buf[idx].get(arrayBuffer, copied, toCopy);
             idx++;
         }
@@ -254,7 +260,7 @@ public class Payload implements MPEGReader, MPEGWriter {
         return val;
     }
 
-    protected void put(long value) {
+    protected void put(final long value) {
         if (buf[idx].remaining() >= Long.BYTES) {
             buf[idx].putLong(value);
         }

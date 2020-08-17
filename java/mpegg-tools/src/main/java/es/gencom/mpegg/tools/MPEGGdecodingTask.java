@@ -8,8 +8,8 @@ import es.gencom.mpegg.decoder.AbstractSequencesSource;
 import es.gencom.mpegg.decoder.DataUnitAccessUnitDecoder;
 import es.gencom.mpegg.decoder.Exceptions.InvalidSymbolException;
 import es.gencom.mpegg.decoder.Exceptions.MissingRequiredDescriptorException;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.util.*;
@@ -44,13 +44,13 @@ public class MPEGGdecodingTask {
         long auId = 0;
         for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()){
             HashMap<DATA_CLASS, HashMap<Long, DataUnitAccessUnit>> ausInSequence =
-                    dataUnitsMap.computeIfAbsent(dataUnitAccessUnit.getHeader().getSequence_ID(), (k)->new HashMap<>());
+                    dataUnitsMap.computeIfAbsent(dataUnitAccessUnit.header.sequence_id, (k)->new HashMap<>());
             HashMap<Long, DataUnitAccessUnit> ausInSequenceAndClass =
-                    ausInSequence.computeIfAbsent(dataUnitAccessUnit.getHeader().getAU_type(), (k)->new HashMap<>());
+                    ausInSequence.computeIfAbsent(dataUnitAccessUnit.header.au_type, (k)->new HashMap<>());
             ausInSequenceAndClass.put(auId, dataUnitAccessUnit);
 
-            if(auId == 0){
-                currentSequence = dataUnitAccessUnit.getHeader().getSequence_ID();
+            if(auId == 0) {
+                currentSequence = dataUnitAccessUnit.header.sequence_id;
             }
 
             auId++;
@@ -66,8 +66,8 @@ public class MPEGGdecodingTask {
             return new SAMReadsCollection();
         }
         System.out.println(
-                "\tdecoding au of type :"+dataUnitToDecode.getHeader().getAU_type()
-                +" id "+dataUnitToDecode.getHeader().getAccess_unit_ID());
+                "\tdecoding au of type :"+dataUnitToDecode.header.au_type
+                +" id "+dataUnitToDecode.header.access_unit_id);
 
         SAMReadsCollection samReadsCollection = new SAMReadsCollection();
 
@@ -129,7 +129,7 @@ public class MPEGGdecodingTask {
             }
 
             DataUnitAccessUnit dataUnitToDecode = dataUnitsToDecode.getDataUnitAccessUnit(currentAU);
-            System.out.println("loading au " + currentAU + " sequence is " + dataUnitToDecode.getHeader().getSequence_ID());
+            System.out.println("loading au " + currentAU + " sequence is " + dataUnitToDecode.header.sequence_id);
 
 
             SAMReadsCollection samReadsCollection = decodeDataUnitIfRequired(dataUnitToDecode);
@@ -139,14 +139,14 @@ public class MPEGGdecodingTask {
                 }
             }
 
-            SequenceIdentifier sequenceId = dataUnitToDecode.getHeader().getSequence_ID();
+            SequenceIdentifier sequenceId = dataUnitToDecode.header.sequence_id;
 
-            currentSequence = dataUnitToDecode.getHeader().getSequence_ID();
-            if (currentSequence != dataUnitToDecode.getHeader().getSequence_ID()) {
+            currentSequence = dataUnitToDecode.header.sequence_id;
+            if (currentSequence != dataUnitToDecode.header.sequence_id) {
                 loadAllInSequence(currentSequence);
             }
 
-            long start = dataUnitToDecode.getHeader().getAu_start_position();
+            long start = dataUnitToDecode.header.au_start_position;
             //todo change this
             long end = start + 100000;
 

@@ -37,7 +37,7 @@ import java.nio.ByteBuffer;
 
 public class AccessUnitInformation extends GenInfo<AccessUnitInformation> {
 
-    public final static String KEY = "auhd";
+    public final static String KEY = "auin";
 
     private ByteBuffer au_information_value;
 

@@ -25,8 +25,8 @@
 
 package es.gencom.mpegg.coder.reference;
 
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
 
 import java.io.IOException;

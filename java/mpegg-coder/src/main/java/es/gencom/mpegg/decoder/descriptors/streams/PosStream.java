@@ -27,34 +27,34 @@ package es.gencom.mpegg.decoder.descriptors.streams;
 
 import es.gencom.mpegg.coder.configuration.EncodingParameters;
 import es.gencom.mpegg.format.DATA_CLASS;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
 import es.gencom.mpegg.decoder.GenomicPosition;
 import es.gencom.mpegg.coder.compression.DescriptorDecoder;
 import es.gencom.mpegg.coder.compression.DescriptorDecoderConfiguration;
+import es.gencom.mpegg.dataunits.AccessUnitBlock;
 import es.gencom.mpegg.io.Payload;
 
 import java.io.IOException;
 
 public class PosStream {
-    private final Payload stream;
     private final DescriptorDecoder[] decoder;
-    private int deltaPosition[];
+    private final int numberTemplateSegments;
     private GenomicPosition previousPosition;
 
     public PosStream(
-            DataUnitAccessUnit.Block block,
+            AccessUnitBlock block,
             GenomicPosition auStartPosition,
             DATA_CLASS dataClass,
             EncodingParameters encodingParameters
     ){
         this.previousPosition = auStartPosition;
+        this.numberTemplateSegments = encodingParameters.getNumberOfTemplateSegments();
 
+        Payload stream;
         if(block == null){
-            this.stream = null;
             decoder = null;
         }else {
-            this.stream = block.getSubstream(0);
+            stream = block.getSubstream(0);
 
             //CABAC_DescriptorDecoderConfiguration conf = new CABAC_DescriptorDecoderConfiguration();
             DescriptorDecoderConfiguration conf = 
@@ -72,14 +72,14 @@ public class PosStream {
         }
     }
 
-    public long[][] read(int[] numberOfSegmentAlignments) throws IOException {
-        long[][] genomicPosition = new long[numberOfSegmentAlignments[0]][1];
+    public long[][][] read(int[] numberOfSegmentAlignments, int maxNumberOfSegmentAlignments) throws IOException {
+        long[][][] genomicPosition = new long[maxNumberOfSegmentAlignments][numberTemplateSegments][1];
 
         previousPosition = previousPosition.advance(decoder[0].read());
-        genomicPosition[0][0] = previousPosition.getPosition();
+        genomicPosition[0][0][0] = previousPosition.getPosition();
 
         for(int i=1; i < numberOfSegmentAlignments[0]; i++){
-            genomicPosition[i][0] = genomicPosition[i-1][0] + decoder[1].read();
+            genomicPosition[i][0][0] = genomicPosition[i-1][0][0] + decoder[1].read();
         }
         return genomicPosition;
     }

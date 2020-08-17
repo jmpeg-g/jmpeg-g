@@ -53,7 +53,7 @@ public class CABAC_DecoderConfiguration extends AbstractDecoderConfiguration {
         
         this.subsequenceConfigurations = subsequenceConfigurations;
     }
-    
+
     /**
      * Write CABAC Decoder Configuration.
      * 
@@ -63,12 +63,19 @@ public class CABAC_DecoderConfiguration extends AbstractDecoderConfiguration {
      */
     @Override
     public void write(final MPEGWriter writer) throws IOException {
+        super.write(writer);
+        
         if (subsequenceConfigurations != null && subsequenceConfigurations.length > 0) {
             writer.writeByte((byte)(subsequenceConfigurations.length - 1));
             for (int i = 0; i < subsequenceConfigurations.length; i++) {
                 subsequenceConfigurations[i].write(writer);
             }
         }
+    }
+
+    @Override
+    public int getNumberSubsequences() {
+        return subsequenceConfigurations.length;
     }
 
     @Override

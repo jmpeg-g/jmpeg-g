@@ -3,10 +3,10 @@ package es.gencom.mpegg.tools;
 import es.gencom.mpegg.format.DATA_CLASS;
 import es.gencom.mpegg.format.SequenceIdentifier;
 import es.gencom.mpegg.format.ref.*;
-import es.gencom.mpegg.coder.dataunits.DataUnitAccessUnit;
-import es.gencom.mpegg.coder.dataunits.DataUnitParameters;
-import es.gencom.mpegg.coder.dataunits.DataUnitRawReference;
-import es.gencom.mpegg.coder.dataunits.DataUnits;
+import es.gencom.mpegg.dataunits.DataUnitAccessUnit;
+import es.gencom.mpegg.dataunits.DataUnitParameters;
+import es.gencom.mpegg.dataunits.DataUnitRawReference;
+import es.gencom.mpegg.dataunits.DataUnits;
 
 import java.io.IOException;
 import java.util.*;
@@ -18,7 +18,7 @@ public class DataUnitsExtractor {
     private final Set<SequenceIdentifier> requiredSequences;
     private final Reference reference;
 
-    public DataUnitsExtractor(Reference reference){
+    public DataUnitsExtractor(Reference reference) {
         dataUnits = new DataUnits();
         parametersMap = new HashMap<>();
         writtenParametersSet = new HashSet<>();
@@ -29,31 +29,31 @@ public class DataUnitsExtractor {
     public void addDataUnitAccessUnit(DataUnitAccessUnit dataUnitAccessUnit) {
         dataUnits.addDataUnit(dataUnitAccessUnit);
         if(dataUnitAccessUnit.getAUType() != DATA_CLASS.CLASS_U) {
-            requiredSequences.add(dataUnitAccessUnit.getHeader().getSequence_ID());
+            requiredSequences.add(dataUnitAccessUnit.header.sequence_id);
         }
     }
 
     public void addDataUnitParameters(DataUnitParameters dataUnitParameters) {
-        parametersMap.put(dataUnitParameters.getParameter_set_ID(), dataUnitParameters);
+        parametersMap.put(dataUnitParameters.parameter_set_id, dataUnitParameters);
     }
 
-    private void addParameter(DataUnitParameters dataUnitParameters){
-        if(dataUnitParameters.getParameter_set_ID() != dataUnitParameters.getParent_parameter_set_ID()){
-            if(!writtenParametersSet.contains(dataUnitParameters.getParent_parameter_set_ID())){
-                addParameter(parametersMap.get(dataUnitParameters.getParent_parameter_set_ID()));
+    private void addParameter(DataUnitParameters dataUnitParameters) {
+        if(dataUnitParameters.parameter_set_id != dataUnitParameters.parent_parameter_set_id) {
+            if(!writtenParametersSet.contains(dataUnitParameters.parent_parameter_set_id)) {
+                addParameter(parametersMap.get(dataUnitParameters.parent_parameter_set_id));
             }
         }
         dataUnits.addDataUnitParameters(dataUnitParameters);
-        writtenParametersSet.add(dataUnitParameters.getParameter_set_ID());
+        writtenParametersSet.add(dataUnitParameters.parameter_set_id);
     }
 
-    public DataUnits getDataUnits(){
+    public DataUnits getDataUnits() {
         return dataUnits;
     }
 
     public DataUnits constructDataUnits() throws IOException {
-        if(reference != null) {
-            DataUnitRawReference rawReference = FormatReferenceToRawReference.convert(reference);
+        if(reference != null && reference.isExternalReference()) {
+            DataUnitRawReference rawReference = FormatReferenceToRawReference.convert((ExternalReference)reference);
 
             int[] requiredSequencesCasted = new int[requiredSequences.size()];
             int required_i = 0;
@@ -62,13 +62,38 @@ public class DataUnitsExtractor {
                 required_i++;
             }
 
-            rawReference = rawReference.selectSubset(requiredSequencesCasted);
-            dataUnits.setDataUnitRawReference(rawReference);
+            if(rawReference != null) {
+                rawReference = rawReference.selectSubset(requiredSequencesCasted);
+                dataUnits.setDataUnitRawReference(rawReference);
+            }
         }
-        for(Map.Entry<Short, DataUnitParameters> parametersEntry : parametersMap.entrySet()){
-            addParameter(parametersEntry.getValue());
+        Set<Short> parametersRequired = new TreeSet<>();
+        for(DataUnitAccessUnit dataUnitAccessUnit : dataUnits.getDataUnitAccessUnits()) {
+            parametersRequired.add(dataUnitAccessUnit.header.parameter_set_id);
+            markParametersParentAsRequired(
+                    parametersMap.get(dataUnitAccessUnit.header.parameter_set_id),
+                                      parametersRequired);
+        }
+
+        for(Map.Entry<Short, DataUnitParameters> parametersEntry : parametersMap.entrySet()) {
+            if(parametersRequired.contains(parametersEntry.getKey())) {
+                addParameter(parametersEntry.getValue());
+            }
         }
 
         return dataUnits;
+    }
+
+    private void markParametersParentAsRequired(
+            DataUnitParameters dataUnitParameters,
+            Set<Short> parametersRequired) {
+        
+        if(dataUnitParameters.parameter_set_id != dataUnitParameters.parent_parameter_set_id) {
+            parametersRequired.add(dataUnitParameters.parent_parameter_set_id);
+            DataUnitParameters parentDataUnitParameters = 
+                    parametersMap.get(dataUnitParameters.parent_parameter_set_id);
+
+            markParametersParentAsRequired(parentDataUnitParameters, parametersRequired);
+        }
     }
 }

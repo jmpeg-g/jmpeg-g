@@ -70,12 +70,11 @@ public class Block implements Content {
 
     public long size() {
         long header_size = 0;
-        if (dataset_header.isBlockHeader()) {
-            if (block_header != null) {
-                header_size += block_header.size();
-            } else {
+        if (dataset_header.isBlockHeaderFlag()) {
+            if (block_header == null) {
                 throw new IllegalArgumentException();
             }
+            header_size += block_header.size();
         }
 
         return header_size + payload.size();
@@ -88,7 +87,7 @@ public class Block implements Content {
 
     @Override
     public void write(final MPEGWriter writer) throws IOException {
-        if (dataset_header.isBlockHeader()) {
+        if (dataset_header.isBlockHeaderFlag()) {
             if (block_header != null) {
                 block_header.write(writer);
             } else {

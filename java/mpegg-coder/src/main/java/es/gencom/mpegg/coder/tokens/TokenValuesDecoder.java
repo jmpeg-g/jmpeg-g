@@ -36,6 +36,16 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class TokenValuesDecoder {
+    /**
+     *
+     * @param reader MPEGReader source of compressed and encoded tokens
+     * @param encodingParameters entropy encoder configuration
+     * @param descriptor_id Id of the descriptor being decrypted. Only RNAME and MSAR's descriptor identifier are
+     *                      legitimate.
+     * @param dataClass DataClass being decoded.
+     * @return The decoded values encoding the different tokens
+     * @throws IOException Can be thrown at multiple points.
+     */
     public static short[][][] decodeTokenValues(
             MPEGReader reader,
             EncodingParameters encodingParameters,

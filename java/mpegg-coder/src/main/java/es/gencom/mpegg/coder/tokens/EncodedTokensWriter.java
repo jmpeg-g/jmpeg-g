@@ -1,4 +1,4 @@
-/**
+/*
  * *****************************************************************************
  * Copyright (C) 2019 Spanish National Bioinformatics Institute (INB) and
  * Barcelona Supercomputing Center
@@ -35,11 +35,23 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class EncodedTokensWriter {
+
+    /**
+     * Upon transforming the different tokens list to symbols, these are to be written encoded and compressed into a
+     * block using thise function.
+     * @param writer MPEGwriter to which the encoded data shall be written to
+     * @param readIdentifierEncoder The read identifier encoder which data shall be encoded
+     * @param descriptor_id The descriptor id which shall be used for the block created while compressing. Only the
+     *                      descriptors for RNAME and MSAR are legitimate here.
+     * @param tokentypeDecoderConfiguration Configuration of the entropy encoder
+     * @throws IOException Can be thrown at multiple points
+     */
     public static void write(
             MPEGWriter writer,
             AbstractReadIdentifierEncoder readIdentifierEncoder,
             DESCRIPTOR_ID descriptor_id,
-            TokentypeDecoderConfiguration tokentypeDecoderConfiguration) throws IOException {
+            TokentypeDecoderConfiguration tokentypeDecoderConfiguration
+    ) throws IOException {
 
         short[][][] values = readIdentifierEncoder.resizeAndGetValues();
 
@@ -56,7 +68,7 @@ public class EncodedTokensWriter {
 
                 //**** SEARCH FOR AN IDENTICAL SUBSEQUENCE*****//
                 boolean found = false;
-                int foundToken = 0;
+                int foundToken;
                 int foundSubtoken = 0;
                 boolean stop = false;
                 for(foundToken=0; foundToken < values.length; foundToken++) {

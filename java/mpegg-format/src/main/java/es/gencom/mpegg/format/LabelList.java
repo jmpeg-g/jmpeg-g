@@ -70,7 +70,7 @@ public class LabelList extends GenInfo {
     }
 
     @Override
-    public void write(final MPEGWriter writer) throws IOException, InvalidMPEGStructure {
+    public void write(final MPEGWriter writer) throws IOException, InvalidMPEGStructureException {
         writer.writeByte(dataset_group_id);
         
         if (labels == null || labels.isEmpty()) {
@@ -84,7 +84,7 @@ public class LabelList extends GenInfo {
     }
 
     @Override
-    public LabelList read(final MPEGReader reader, final long size) throws IOException, InvalidMPEGStructure, ParsedSizeMismatchException {
+    public LabelList read(final MPEGReader reader, final long size) throws IOException, InvalidMPEGStructureException, ParsedSizeMismatchException {
 
         dataset_group_id = reader.readByte();
         final int num_labels = reader.readUnsignedShort();
@@ -93,7 +93,7 @@ public class LabelList extends GenInfo {
             for (int i = 0; i < num_labels; i++) {
                 final Header header = Header.read(reader);
                 if(! header.key.equals(Label.KEY)){
-                    throw new InvalidMPEGStructure("Key info different to "+Label.KEY+" in labelList");
+                    throw new InvalidMPEGStructureException("Key info different to "+Label.KEY+" in labelList");
                 }
                 final Label label = new Label().read(reader, header.getContentSize());
                 labels.add(label);
@@ -152,5 +152,14 @@ public class LabelList extends GenInfo {
             }
         }
         return result;
+    }
+
+    public Label getByName(String id){
+        for(Label label : getLabels()){
+            if(label.getLabelId().equals(id)){
+                return label;
+            }
+        }
+        return null;
     }
 }

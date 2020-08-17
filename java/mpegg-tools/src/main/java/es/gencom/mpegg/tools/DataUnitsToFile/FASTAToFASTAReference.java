@@ -4,9 +4,7 @@ import es.gencom.integration.fasta.FastaFileReader;
 import es.gencom.integration.fasta.FastaSequence;
 import es.gencom.mpegg.format.ChecksumAlgorithm;
 import es.gencom.mpegg.format.DatasetGroupContainer;
-import es.gencom.mpegg.format.ref.AbstractLocation;
-import es.gencom.mpegg.format.ref.ExternalLocation;
-import es.gencom.mpegg.format.ref.REFERENCE_TYPE;
+import es.gencom.mpegg.format.ref.FASTA_Reference;
 import es.gencom.mpegg.format.ref.Reference;
 
 import java.io.IOException;
@@ -62,15 +60,7 @@ public class FASTAToFASTAReference {
         sequence_names = Arrays.copyOf(sequence_names, numberSequences);
         checksums = Arrays.copyOf(checksums, numberSequences);
 
-        AbstractLocation location = new ExternalLocation(
-                reportedPath,
-                checksumAlgorithm,
-                REFERENCE_TYPE.FASTA_REF,
-                checksums
-        );
-
-
-        Reference reference = new Reference(
+        Reference reference = new FASTA_Reference(
                 datasetGroupContainer.getDatasetGroupHeader().getDatasetGroupId(),
                 (byte) (maxAllocatedReferenceId + 1),
                 reference_name,
@@ -78,8 +68,9 @@ public class FASTAToFASTAReference {
                 reference_minor_version,
                 reference_patch_version,
                 sequence_names,
-                location
-        );
+                reportedPath,
+                checksumAlgorithm,
+                checksums);
 
         datasetGroupContainer.addReference(reference);
 

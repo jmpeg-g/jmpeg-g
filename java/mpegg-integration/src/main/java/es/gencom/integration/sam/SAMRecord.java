@@ -264,4 +264,8 @@ public abstract class SAMRecord implements SequenceRecord {
         //todo retrieve from tags
         return null;
     }
+
+    public boolean isUnpaired(){
+        return (flag & FIRST_SEGMENT) != 0;
+    }
 }

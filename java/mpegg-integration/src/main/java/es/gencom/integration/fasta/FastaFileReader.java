@@ -25,7 +25,7 @@
 
 package es.gencom.integration.fasta;
 
-import es.gencom.integration.gzip.GZipFileInputStream;
+import es.gencom.integration.gzip.BGZFFileInputStream;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,7 +70,7 @@ public class FastaFileReader implements Iterable<FastaSequence> {
     public FastaFileReader(Path path, boolean lazy) throws IOException {
         
         boolean gzip;
-        try (GZipFileInputStream in = new GZipFileInputStream(path)) {
+        try (BGZFFileInputStream in = new BGZFFileInputStream(path)) {
             gzip = true;
         } catch (ZipException ex) {
             gzip = false;
@@ -87,7 +87,7 @@ public class FastaFileReader implements Iterable<FastaSequence> {
     
     public FastaIterator iterator(FastaSequence seq) {
         try {
-            InputStream in = gzip ? new GZipFileInputStream(path) :
+            InputStream in = gzip ? new BGZFFileInputStream(path) :
                     new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ));
             return seq == null ? new FastaIterator(in, gzip ? false : lazy) : 
                                  new FastaIterator(in, seq, gzip ? false : lazy);
@@ -117,7 +117,7 @@ public class FastaFileReader implements Iterable<FastaSequence> {
         
         InputStream in;
         if (gzip) {
-            in = new GZipFileInputStream(path);
+            in = new BGZFFileInputStream(path);
             in.skip(seq.position);            
         } else {
             FileChannel channel = FileChannel.open(path, EnumSet.of(READ));

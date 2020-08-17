@@ -43,27 +43,72 @@ public class GenomicPosition implements Comparable<GenomicPosition>{
         this.position = position;
     }
 
+    /**
+     * This constructor returns a mapped genomic position.
+     * @param sequenceId Sequence where the position is mapped to.
+     * @param position 0-based position on the sequence
+     */
     public GenomicPosition(SequenceIdentifier sequenceId, long position) {
         this(false, sequenceId, position);
     }
 
+    /**
+     * This method returns an unmapped position.
+     * @return unmapped position
+     */
     public static GenomicPosition getUnmapped() {
         return new GenomicPosition(true, null, 0);
     }
 
+    /**
+     * Check whether position is mapped or unmapped
+     * @return an unmapped GenomicPosition
+     */
     public boolean isUnmapped(){
         return unmapped;
     }
 
+    /**
+     * Returns the sequence to which the genomic position is mapped to, if mapped. Otherwise an exception is thrown.
+     * @return the sequence to which the position is mapped
+     * @throws IllegalArgumentException When the genomic position is unmapped, this exception is thrown.
+     */
     public SequenceIdentifier getSequenceId() {
+        if(unmapped){
+            throw new IllegalArgumentException();
+        }
         return sequenceId;
     }
 
+    /**
+     * Returns the position on the sequence to which the genomic position is mapped to, if mapped. Otherwise an
+     * exception is thrown.
+     * @return the position on the sequence to which the position is mapped
+     * @throws IllegalArgumentException When the genomic position is unmapped, this exception is thrown.
+     */
     public long getPosition() {
+        if(unmapped){
+            throw new IllegalArgumentException();
+        }
         return position;
     }
 
+    /**
+     * Returns a new genomic position mapped to the same sequence, but to a position shifted by the value of
+     * parameter distance
+     * @param distance by which the current position must be shifted
+     * @return the new genomic position
+     * @throws IllegalArgumentException If the current genomic position is unmapped, or the new mapping poisiton would
+     * be negative, this exception is thrown.
+     */
     public GenomicPosition advance(long distance){
+        if(unmapped){
+            throw new IllegalArgumentException();
+        }
+
+        if((position + distance) < 0){
+            throw new IllegalArgumentException();
+        }
         return new GenomicPosition(
                 sequenceId,
                 position + distance
