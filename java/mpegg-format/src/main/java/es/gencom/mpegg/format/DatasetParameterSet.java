@@ -116,7 +116,7 @@ public class DatasetParameterSet extends GenInfo<DatasetParameterSet> {
         result += 2; //dataset_id
         result += 1; //parameter_set_ID
         result += 1; //parent_parameter_set_ID
-        result += parameters.capacity();
+        result += parameters.limit();
         return result;
     }
 
