@@ -45,27 +45,29 @@ public class SAMHeader {
     
     public SAMHeader(final String header) {
         final String[] lines = header.split("\n");
-        if(!lines[0].startsWith(HeaderLine.TAG)) {
-            throw new IllegalArgumentException();
-        }
-        header_line = new HeaderLine(lines[0].substring(4));
 
-        for(int i = 1; i < lines.length; i++) {
-            switch (lines[i].substring(0, 3)) {
-                case ReferenceLine.TAG:
-                    getReferences().add(new ReferenceLine(lines[i].substring(4)));
-                    break;
-                case ReadGroupLine.TAG:
-                    getReadGroups().add(new ReadGroupLine(lines[i].substring(4)));
-                    break;
-                case ProgramLine.TAG:
-                    getPrograms().add(new ProgramLine(lines[i].substring(4)));
-                    break;
-                case CommentLine.TAG:
-                    getComments().add(new CommentLine(lines[i].substring(4)));
-                    break;
-                default:
-                    throw new IllegalArgumentException();
+        if (lines.length > 0) {
+            if(lines[0].startsWith(HeaderLine.TAG)) {
+                header_line = new HeaderLine(lines[0].substring(Math.min(lines[0].length(), 4)));
+            }
+
+            for(int i = header_line == null ? 0 : 1; i < lines.length; i++) {
+                switch (lines[i].substring(0, 3)) {
+                    case ReferenceLine.TAG:
+                        getReferences().add(new ReferenceLine(lines[i].substring(4)));
+                        break;
+                    case ReadGroupLine.TAG:
+                        getReadGroups().add(new ReadGroupLine(lines[i].substring(4)));
+                        break;
+                    case ProgramLine.TAG:
+                        getPrograms().add(new ProgramLine(lines[i].substring(4)));
+                        break;
+                    case CommentLine.TAG:
+                        getComments().add(new CommentLine(lines[i].substring(4)));
+                        break;
+                    default:
+                        throw new IllegalArgumentException();
+                }
             }
         }
     }
