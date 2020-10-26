@@ -77,7 +77,7 @@ public class BAMHeader extends SAMHeader {
         }
         final int l_text = (int)DataReaderHelper.readUnsignedInt(in);
         final byte[] txt = new byte[l_text];
-        in.read(txt);
+        for (int i = 0, n; i < l_text && (n = in.read(txt, i, l_text - i)) >= 0; i += n) {}
 
         final SAMHeader header = new SAMHeader(new String(txt, StandardCharsets.US_ASCII));
 
