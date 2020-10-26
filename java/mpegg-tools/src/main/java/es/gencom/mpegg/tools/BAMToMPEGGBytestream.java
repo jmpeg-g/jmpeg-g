@@ -433,15 +433,20 @@ public class BAMToMPEGGBytestream {
             throw new InternalError();
         }
 
-        System.out.println("Finished with aus with id = "+accessUnitEncoders[0].getAuId());
-        for (AbstractAccessUnitEncoder abstractAccessUnitEncoder : accessUnitEncoders) {
-            if(abstractAccessUnitEncoder.getReadCount() != 0) {
-                SAMtoMPEGG.writeAccessUnitToFile(
-                        writer,
-                        abstractAccessUnitEncoder,
-                        dataUnits.getParameter(abstractAccessUnitEncoder.getEncodingParametersId())
-                );
+        if (accessUnitEncoders != null) {
+            if (accessUnitEncoders.length > 0) {
+                System.out.println("Finished with aus with id = " + accessUnitEncoders[0].getAuId());
             }
+            
+            for (AbstractAccessUnitEncoder abstractAccessUnitEncoder : accessUnitEncoders) {
+                if(abstractAccessUnitEncoder.getReadCount() != 0) {
+                    SAMtoMPEGG.writeAccessUnitToFile(
+                            writer,
+                            abstractAccessUnitEncoder,
+                            dataUnits.getParameter(abstractAccessUnitEncoder.getEncodingParametersId())
+                    );
+                }
+            }            
         }
 
         for(String readName : writtenRecords){
