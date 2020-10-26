@@ -433,10 +433,8 @@ public class BAMToMPEGGBytestream {
             throw new InternalError();
         }
 
-        if (accessUnitEncoders != null) {
-            if (accessUnitEncoders.length > 0) {
-                System.out.println("Finished with aus with id = " + accessUnitEncoders[0].getAuId());
-            }
+        if (accessUnitEncoders != null && accessUnitEncoders.length > 0) {
+            System.out.println("Finished with aus with id = " + accessUnitEncoders[0].getAuId());
             
             for (AbstractAccessUnitEncoder abstractAccessUnitEncoder : accessUnitEncoders) {
                 if(abstractAccessUnitEncoder.getReadCount() != 0) {
