@@ -50,7 +50,7 @@ public class CT implements SAMTag {
     }
 
     @Override
-    public Object getTagValue() {
+    public String getTagValue() {
         return z;
     }
 }

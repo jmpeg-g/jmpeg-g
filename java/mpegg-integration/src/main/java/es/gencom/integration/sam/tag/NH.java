@@ -50,7 +50,7 @@ public class NH implements SAMTag {
     }
 
     @Override
-    public Object getTagValue() {
+    public Integer getTagValue() {
         return i;
     }
 }
