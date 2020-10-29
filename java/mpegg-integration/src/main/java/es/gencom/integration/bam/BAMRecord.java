@@ -29,7 +29,6 @@ import es.gencom.integration.gzip.BGZFInputStream;
 import es.gencom.integration.io.DataReaderHelper;
 import es.gencom.integration.io.DataWriterHelper;
 import es.gencom.integration.sam.CIGAR;
-import es.gencom.integration.sam.CIGAROperation;
 import es.gencom.integration.sam.SAMRecord;
 import es.gencom.integration.sam.SAMTag;
 import es.gencom.integration.sam.tag.SAMTagEnum;
@@ -473,39 +472,6 @@ public class BAMRecord extends SAMRecord implements SequenceRecord {
             record.auxiliary = null;
         }
         return record;
-    }
-
-    public String getGroup() {
-        SAMTag tag = getTag(SAMTagEnum.RG);
-        return (String) tag.getTagValue();
-    }
-
-    public long[] getMappingQualityAllQualities() {
-        return new long[]{getMappingQuality()};
-    }
-
-    public boolean isPrimary(){
-        return (flag & 0x100) == 0;
-    }
-
-    public boolean isSecondary(){
-        return (flag & 0x100) == 0;
-    }
-
-    public void setSecondary(boolean value){
-        if(value) {
-            flag |= 0x100;
-        } else {
-            flag &= ~0x100;
-        }
-    }
-
-    public void setPrimary(boolean value){
-        if(value) {
-            flag &= ~0x100;
-        } else {
-            flag |= 0x100;
-        }
     }
 
     @Override

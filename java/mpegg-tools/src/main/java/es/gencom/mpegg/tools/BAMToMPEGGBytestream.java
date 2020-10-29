@@ -4,6 +4,8 @@ import es.gencom.integration.bam.BAMFileReader;
 import es.gencom.integration.bam.BAMHeader;
 import es.gencom.integration.bam.BAMRecord;
 import es.gencom.integration.bam.BufferedBAMFileReader;
+import es.gencom.integration.sam.tag.RG;
+import es.gencom.integration.sam.tag.SAMTagEnum;
 import es.gencom.mpegg.Record;
 import es.gencom.mpegg.coder.compression.ALPHABET_ID;
 import es.gencom.mpegg.coder.compression.DESCRIPTOR_ID;
@@ -598,16 +600,17 @@ public class BAMToMPEGGBytestream {
 
 
             if (multipleAlignmentsLedger.isMultialigned(readName, segment_i)) {
-                if (bamRecord.isSecondary()) {
+                if (bamRecord.isSecondaryAlignment()) {
                     GenomicPosition principalPosition =
                             multipleAlignmentsLedger.getPrincipalPosition(readName, segment_i);
                     boolean storableWithPrimary = principalPosition.getSequenceId().getSequenceIdentifier()
                             == bamRecord.getRefID();
                     if (!storableWithPrimary) {
+                        final RG groupName = bamRecord.getTag(SAMTagEnum.RG);
                         RecordConstructor constructor = new RecordConstructor(
                                 numberReads,
                                 bamRecord.getQName(),
-                                bamRecord.getGroup(),
+                                groupName == null ? null : groupName.getTagValue(),
                                 bamRecord,
                                 threshold
                         );
@@ -633,10 +636,11 @@ public class BAMToMPEGGBytestream {
                     if( alignments.containsKey(readName)) {
                         constructor = alignments.get(readName);
                     } else {
+                        final RG groupName = bamRecord.getTag(SAMTagEnum.RG);
                         constructor = new RecordConstructor(
                                 numberReads,
                                 bamRecord.getQName(),
-                                bamRecord.getGroup(),
+                                groupName == null ? null : groupName.getTagValue(),
                                 bamRecord,
                                 threshold
                         );
@@ -677,10 +681,12 @@ public class BAMToMPEGGBytestream {
                                     Math.abs(bamRecord.getNextPositionStart() - bamRecord.getPositionStart()) > threshold)
                             || (!bamRecord.isUnmappedSegment() && bamRecord.isNextSegmentUnmapped())) {
 
+                        final RG groupName = bamRecord.getTag(SAMTagEnum.RG);
+                        
                         RecordConstructor constructor = new RecordConstructor(
                                 numberReads,
                                 bamRecord.getQName(),
-                                bamRecord.getGroup(),
+                                groupName == null ? null : groupName.getTagValue(),
                                 bamRecord,
                                 threshold
                         );
