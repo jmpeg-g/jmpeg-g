@@ -53,8 +53,9 @@ public interface SequenceRecord {
     String getCIGAR();
     void setCIGAR(String cigar);
 
-    byte[] getQualityBytes();
     String getQuality();
     void setQuality(String string);
+
+    byte[] getQualityBytes();
     void setQualityBytes(byte[] qualities);
 }

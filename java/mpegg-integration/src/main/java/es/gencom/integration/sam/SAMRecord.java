@@ -30,6 +30,7 @@ package es.gencom.integration.sam;
  */
 
 public abstract class SAMRecord implements SequenceRecord {
+
     public final static int HAS_MULTIPLE_SEGMENTS = 0x01;
     public final static int SEGMENT_PROPERLY_ALIGNED = 0x02;
     public final static int UNMAPPED_SEGMENT = 0x04;
