@@ -50,7 +50,7 @@ public class LB implements SAMTag {
     }
 
     @Override
-    public Object getTagValue() {
+    public String getTagValue() {
         return z;
     }
 }

@@ -50,7 +50,7 @@ public class PT implements SAMTag {
     }
 
     @Override
-    public Object getTagValue() {
+    public String getTagValue() {
         return z;
     }
 }

@@ -37,5 +37,5 @@ public interface SAMTag {
     
     char getTagType();
     String getTagName();
-    Object getTagValue();
+    <T extends Object> T getTagValue();
 }
