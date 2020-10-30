@@ -610,7 +610,7 @@ public class BAMToMPEGGBytestream {
                         RecordConstructor constructor = new RecordConstructor(
                                 numberReads,
                                 bamRecord.getQName(),
-                                groupName == null ? null : groupName.getTagValue(),
+                                groupName == null ? "" : groupName.getTagValue(),
                                 bamRecord,
                                 threshold
                         );
@@ -640,7 +640,7 @@ public class BAMToMPEGGBytestream {
                         constructor = new RecordConstructor(
                                 numberReads,
                                 bamRecord.getQName(),
-                                groupName == null ? null : groupName.getTagValue(),
+                                groupName == null ? "" : groupName.getTagValue(),
                                 bamRecord,
                                 threshold
                         );
@@ -686,7 +686,7 @@ public class BAMToMPEGGBytestream {
                         RecordConstructor constructor = new RecordConstructor(
                                 numberReads,
                                 bamRecord.getQName(),
-                                groupName == null ? null : groupName.getTagValue(),
+                                groupName == null ? "" : groupName.getTagValue(),
                                 bamRecord,
                                 threshold
                         );
