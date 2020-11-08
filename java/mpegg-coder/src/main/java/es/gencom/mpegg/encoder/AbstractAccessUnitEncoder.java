@@ -131,19 +131,19 @@ public abstract class AbstractAccessUnitEncoder {
         return dataUnitParameters.parameter_set_id;
     }
 
-    protected void encodeGroupId(String groupIdentifier){
-        int groupId = -1;
-        for(int group_i=0; group_i<readGroupIds.length; group_i++){
-            if(Objects.equals(readGroupIds[group_i], groupIdentifier)){
-                groupId = group_i;
-                break;
+    protected void encodeGroupId(String group_id) {
+        if (group_id == null) {
+            group_id = "";
+        }
+        for(int i = 0; i < readGroupIds.length; i++) {
+            if(Objects.equals(readGroupIds[i], group_id)) {
+                addSymbol(i, DESCRIPTOR_ID.RGROUP, (byte)0, symbols, number_symbols);
+                return;
             }
         }
-        if(groupId == -1){
-            throw new IllegalArgumentException();
+        if(readGroupIds.length > 0 || !group_id.isEmpty()) {
+            throw new IllegalArgumentException("invalid group id: " + group_id);
         }
-        addSymbol(groupId, DESCRIPTOR_ID.RGROUP, (byte)0, symbols, number_symbols);
-
     }
 
     protected static void addSymbol(
@@ -187,7 +187,12 @@ public abstract class AbstractAccessUnitEncoder {
                 totalSizeInMemory += val1.length;
             }
         }
-        encodeGroupId(record.getGroupId());
+        
+        /* If num_groups is set to 0, the rgroup descriptor shall not be present in the AUs referring to this parameter set. */
+        if (readGroupIds != null && readGroupIds.length > 0) {
+            encodeGroupId(record.getGroupId());
+        }
+        
         writeSpecific(record);
     }
 
