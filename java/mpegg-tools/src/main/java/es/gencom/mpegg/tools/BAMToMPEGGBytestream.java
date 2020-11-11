@@ -275,9 +275,7 @@ public class BAMToMPEGGBytestream {
 
         Set<String> writtenRecords = new HashSet<>();
         for (Map.Entry<String, RecordConstructor> entry : alignments.entrySet()) {
-            if (
-                    entry.getValue().couldBeCompleted()
-            ) {
+            if (entry.getValue().couldBeCompleted()) {
                 Record record = entry.getValue().construct(sequencesSource, bamHeader);
                 DATA_CLASS dataClass = entry.getValue().getDataClass();
 
@@ -548,10 +546,6 @@ public class BAMToMPEGGBytestream {
         BAMFileReader bamFileReaderForLedger = new BAMFileReader(Paths.get(inputBamPath));
         MultipleAlignmentsLedger multipleAlignmentsLedger = new MultipleAlignmentsLedger(bamFileReaderForLedger);
         System.out.println("Scanned");
-
-
-
-
 
         long auWidth = 6000000;
 
