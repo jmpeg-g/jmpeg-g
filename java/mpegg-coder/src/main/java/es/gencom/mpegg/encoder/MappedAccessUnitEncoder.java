@@ -284,15 +284,10 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
             short[][] qualities,
             long auStart,
             long[][][] symbols,
-            int[][] numSymbols
-    ) {
-        addSymbol(
-                1,
-                DESCRIPTOR_ID.QV,
-                (byte)0,
-                symbols,
-                numSymbols
-        );
+            int[][] numSymbols) {
+        
+        addSymbol(1, DESCRIPTOR_ID.QV, (byte)0, symbols, numSymbols);
+
         for(int splice_i=0; splice_i < mappingPositions.length; splice_i++){
             int currentPosition = Math.toIntExact(mappingPositions[splice_i] - auStart);
             int currentQualityIndex = 0;
@@ -313,9 +308,6 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
                 } else {
                     codebookId = qualityBookIndexes[currentPosition];
                 }
-
-
-
 
                 for(int operationBase_i = 0;
                         operationBase_i < operationLengths[splice_i][operation_i];
@@ -607,8 +599,10 @@ public class MappedAccessUnitEncoder extends AbstractAccessUnitEncoder{
             int[][] numberSymbols) {
 
         boolean hasSplicedReads = false;
-        for(int segment_i=0; segment_i < spliceLength.length; segment_i++){
-            if(spliceLength[segment_i]!= null && spliceLength[segment_i][0].length != 1){
+        for(int segment_i=0; segment_i < spliceLength.length; segment_i++) {
+            if(spliceLength[segment_i] != null && 
+               spliceLength[segment_i][0] != null && 
+               spliceLength[segment_i][0].length != 1) {
                 hasSplicedReads = true;
                 break;
             }
