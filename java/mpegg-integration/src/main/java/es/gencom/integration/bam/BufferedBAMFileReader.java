@@ -1,7 +1,5 @@
 package es.gencom.integration.bam;
 
-import es.gencom.integration.sam.header.SAMHeader;
-
 import java.io.IOException;
 import java.util.*;
 import java.util.zip.DataFormatException;
@@ -61,7 +59,6 @@ public class BufferedBAMFileReader implements Iterable<BAMRecord>{
         if(records.size() == 0){
             recordsByName.remove(recordToReturn.getQName());
         }
-
 
         BAMRecord nextRecord = getNextIfPossible();
         if(nextRecord != null){
