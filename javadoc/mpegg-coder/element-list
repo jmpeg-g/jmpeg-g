@@ -1,0 +1,10 @@
+es.gencom.mpegg
+es.gencom.mpegg.coder.configuration
+es.gencom.mpegg.coder.quality
+es.gencom.mpegg.coder.reference
+es.gencom.mpegg.coder.tokens
+es.gencom.mpegg.dataunits
+es.gencom.mpegg.decoder
+es.gencom.mpegg.decoder.descriptors.streams
+es.gencom.mpegg.decoder.exceptions
+es.gencom.mpegg.encoder

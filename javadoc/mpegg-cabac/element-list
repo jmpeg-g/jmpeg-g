@@ -1,0 +1,6 @@
+es.gencom.mpegg.CABAC.binarization
+es.gencom.mpegg.CABAC.configuration
+es.gencom.mpegg.CABAC.configuration.subseq
+es.gencom.mpegg.CABAC.decoder
+es.gencom.mpegg.CABAC.encoder
+es.gencom.mpegg.CABAC.mcoder

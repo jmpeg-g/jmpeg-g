@@ -1,0 +1,10 @@
+es.gencom.integration.bam
+es.gencom.integration.deflate
+es.gencom.integration.fasta
+es.gencom.integration.gzip
+es.gencom.integration.huffman
+es.gencom.integration.io
+es.gencom.integration.saca
+es.gencom.integration.sam
+es.gencom.integration.sam.header
+es.gencom.integration.sam.tag
